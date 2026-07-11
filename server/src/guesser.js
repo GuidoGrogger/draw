@@ -17,17 +17,25 @@ const SYSTEM_PROMPT = `Du bist der Ratemeister in einem Zeichenspiel ("Montagsma
 Ein Mensch hat mit der Maus/dem Finger einen Begriff auf eine weiße Leinwand gemalt.
 Deine Aufgabe:
 1. Schau dir die Zeichnung genau an und rate, welcher Begriff gemeint ist.
-2. WICHTIG - Betrugserkennung: Prüfe, ob im Bild Buchstaben, geschriebene Wörter,
-   Zahlen oder Text zu sehen sind (der Spieler könnte das Wort einfach hinschreiben,
-   statt es zu zeichnen). Auch einzelne Buchstaben als Hinweis zählen als Betrug.
-   Normale Zeichnungselemente (z.B. ein Kreuz, geometrische Formen) sind KEIN Text.
+2. Betrugserkennung (sei ZURÜCKHALTEND, im Zweifel KEIN Betrug): Melde nur dann Betrug,
+   wenn eindeutig lesbare Buchstaben, Wörter oder Zahlen im Bild stehen, die den Begriff
+   verraten. Handgemalte Zeichnungen sind ungenau - krumme, zackige oder ausgefranste
+   Linien, Schraffuren, Pfeile, Kreuze, geometrische Formen oder einzelne mehrdeutige
+   Kritzel sind KEIN Text. Nur wenn du ein Wort tatsächlich LESEN kannst, ist es Betrug.
+   Gib deine Sicherheit als written_text_confidence (0-100) an: 0 = sicher kein Text,
+   100 = eindeutig lesbares Wort. Setze written_text nur auf true, wenn du dir sehr
+   sicher bist (Sicherheit >= 80).
 3. Antworte AUSSCHLIESSLICH mit einem JSON-Objekt, ohne Markdown, ohne Erklärung davor
    oder danach, in exakt diesem Format:
-{"guesses":[{"term":"Begriff1","confidence":85},{"term":"Begriff2","confidence":40},{"term":"Begriff3","confidence":20}],"written_text":false,"comment":"kurzer witziger Kommentar (max 10 Wörter)"}
+{"guesses":[{"term":"Begriff1","confidence":85},{"term":"Begriff2","confidence":40},{"term":"Begriff3","confidence":20}],"written_text":false,"written_text_confidence":0,"comment":"kurzer witziger Kommentar (max 10 Wörter)"}
 
 Regeln für guesses: 1-3 deutsche Begriffe (einzelne Substantive oder Tätigkeiten),
 sortiert nach Wahrscheinlichkeit, confidence 0-100.
 Wenn du gar nichts erkennst: leere guesses-Liste und ehrlicher Kommentar.`;
+
+// Nur wenn die KI sich sehr sicher ist, dass echter Text im Bild steht,
+// zählt es als Betrug. So werden zackige Zeichenlinien nicht fälschlich geflaggt.
+const CHEAT_CONFIDENCE_THRESHOLD = 80;
 
 let running = 0;
 
@@ -95,9 +103,15 @@ export function parseGuessJson(text) {
         term: g.term.slice(0, 60),
         confidence: Math.max(0, Math.min(100, Number(g.confidence) || 0)),
       }));
+    // Betrug nur, wenn die KI Text meldet UND sich dabei sehr sicher ist.
+    // Fehlt die Confidence (ältere Antworten), reicht das reine Flag.
+    const hasConfidence = data.written_text_confidence != null;
+    const textConfidence = Math.max(0, Math.min(100, Number(data.written_text_confidence) || 0));
+    const writtenText = Boolean(data.written_text) &&
+      (!hasConfidence || textConfidence >= CHEAT_CONFIDENCE_THRESHOLD);
     return {
       guesses,
-      writtenText: Boolean(data.written_text),
+      writtenText,
       comment: typeof data.comment === "string" ? data.comment.slice(0, 140) : "",
     };
   } catch {
