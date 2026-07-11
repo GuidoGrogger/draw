@@ -27,11 +27,13 @@ statische Frontend als auch das Backend (`/api` + `/ws`) aus.
 
 ## Spielablauf
 
-1. Begriff wird angezeigt, 120 s Timer (Duell: 90 s).
-2. Alle 20 s (einstellbar: 10/20/30) geht ein Snapshot an Claude — aber nur,
+1. Begriff wird angezeigt, 180 s Timer (Duell: 90 s).
+2. Alle 10 s (einstellbar: 10/20/30) geht ein Snapshot an Claude — aber nur,
    wenn sich die Zeichnung geändert hat. Zusätzlich: „Jetzt raten!"-Button.
 3. Claudes Vermutungen erscheinen live im Feed; im Duell sieht man auch den
-   Top-Guess des Gegners.
+   Top-Guess des Gegners. Bereits geratene, falsche Begriffe merkt sich das
+   Spiel und schließt sie beim nächsten Check aus, damit Claude nicht immer
+   wieder dieselben Fehlversuche vorschlägt.
 4. Treffer: Solo → Punkte = Restzeit (+Bonus für Ersterkennung).
    Duell → Rundensieg, Best of 5.
 

@@ -116,7 +116,7 @@ const server = http.createServer(async (req, res) => {
 
       let aiResult;
       try {
-        aiResult = await guessDrawing(body.image);
+        aiResult = await guessDrawing(body.image, body.excludeTerms);
       } catch (err) {
         if (err.code === "BUSY") return json(res, 429, { error: "busy" });
         console.error("guess failed:", err.message);

@@ -107,6 +107,7 @@ export class DuelGame {
     this.active = true;
     this.solvedRound = false;
     this.pendingReplay = null;
+    this.wrongGuesses = []; // schon geratene, aber falsche Begriffe dieser Runde
     this.ui.showScreen("game");
     this.ui.duelScore(true);
     this.ui.roundBox(true, msg.round, msg.totalRounds);
@@ -136,6 +137,7 @@ export class DuelGame {
         image: this.ui.canvas.toDataUrl(),
         roomCode: this.ui.lobbyCodeValue,
         playerId: this.playerId,
+        excludeTerms: this.wrongGuesses,
       });
     } catch (err) {
       this.ui.feedRemoveThinking();
@@ -147,7 +149,17 @@ export class DuelGame {
 
     if (result.disqualified) return; // cheat_flag kommt via WS
     this.ui.feedGuesses(result.guesses, result.comment);
-    // Bei Treffer schickt der Server round_end an beide.
+    // Bei Treffer schickt der Server round_end an beide; bis dahin war alles falsch.
+    if (!result.hit) this.rememberWrong(result.guesses);
+  }
+
+  rememberWrong(guesses) {
+    for (const g of guesses || []) {
+      const term = g?.term?.trim();
+      if (!term) continue;
+      const known = this.wrongGuesses.some((w) => w.toLowerCase() === term.toLowerCase());
+      if (!known) this.wrongGuesses.push(term);
+    }
   }
 
   _roundEnd(msg) {

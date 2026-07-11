@@ -1,7 +1,7 @@
 import { pickWord } from "./words.js";
 import { requestGuess } from "./api.js";
 
-const ROUND_SECONDS = 120;
+const ROUND_SECONDS = 180;
 
 // Solo-Modus: Begriff malen, KI checkt im Intervall + auf Knopfdruck.
 export class SoloGame {
@@ -26,6 +26,7 @@ export class SoloGame {
     this.usedWords.push(this.word);
     this.checks = 0;
     this.solved = false;
+    this.wrongGuesses = []; // schon geratene, aber falsche Begriffe dieser Runde
     this.ui.showScreen("game"); // zurück vom Result-Screen (nach Treffer/Timeout)
     this.ui.setWord(this.word);
     this.ui.clearFeed();
@@ -53,6 +54,7 @@ export class SoloGame {
       result = await requestGuess({
         image: this.ui.canvas.toDataUrl(),
         targetWord: this.word,
+        excludeTerms: this.wrongGuesses,
       });
     } catch (err) {
       this.ui.feedRemoveThinking();
@@ -68,7 +70,21 @@ export class SoloGame {
     }
     this.ui.feedGuesses(result.guesses, result.comment);
 
-    if (result.hit) this.onHit();
+    if (result.hit) {
+      this.onHit();
+    } else {
+      // Diese Begriffe waren falsch – beim nächsten Check nicht erneut raten.
+      this.rememberWrong(result.guesses);
+    }
+  }
+
+  rememberWrong(guesses) {
+    for (const g of guesses || []) {
+      const term = g?.term?.trim();
+      if (!term) continue;
+      const known = this.wrongGuesses.some((w) => w.toLowerCase() === term.toLowerCase());
+      if (!known) this.wrongGuesses.push(term);
+    }
   }
 
   onHit() {

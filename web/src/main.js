@@ -96,7 +96,7 @@ function renderTimer() {
 let autoInterval = null;
 let nextCheckIn = 0;
 function checkIntervalSeconds() {
-  return parseInt($("setting-interval").value, 10) || 20;
+  return parseInt($("setting-interval").value, 10) || 10;
 }
 function startAutoCheck(fn) {
   stopAutoCheck();
