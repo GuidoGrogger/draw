@@ -26,6 +26,7 @@ export class SoloGame {
     this.usedWords.push(this.word);
     this.checks = 0;
     this.solved = false;
+    this.ui.showScreen("game"); // zurück vom Result-Screen (nach Treffer/Timeout)
     this.ui.setWord(this.word);
     this.ui.clearFeed();
     this.ui.canvas.clear();
