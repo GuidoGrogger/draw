@@ -18,7 +18,11 @@ export class DrawCanvas {
     canvas.addEventListener("pointerdown", (e) => this._down(e));
     canvas.addEventListener("pointermove", (e) => this._move(e));
     window.addEventListener("pointerup", () => this._up());
-    canvas.addEventListener("pointerleave", () => this._up());
+    // Vom System abgebrochene Geste (z.B. Handy-Wischgeste): Strich sauber beenden.
+    window.addEventListener("pointercancel", () => this._up());
+    // Kein pointerleave -> _up: setPointerCapture(e.pointerId) hält den Zeiger, wir
+    // bekommen pointerup/-move zuverlässig aufs window. Auf Touch feuert Safari sonst
+    // direkt nach setPointerCapture ein pointerleave und der Strich wäre nur ein Punkt.
   }
 
   _pos(e) {
