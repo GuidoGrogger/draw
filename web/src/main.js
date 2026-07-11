@@ -160,7 +160,7 @@ function feedHit(word) {
   feedAdd(`✅ <b>${esc(word)}</b> – erkannt!`, "hit");
 }
 function feedCheat() {
-  feedAdd("🚨 Schummeln erkannt: Da steht Text im Bild! Dieser Check zählt nicht.", "cheat");
+  feedAdd("✍️ Hinweis: Es sieht nach geschriebenem Text aus – gezeichnet zählt, geschrieben nicht. Dieser Check zählt nicht.", "cheat");
 }
 function feedOppGuess(text, conf) {
   feedAdd(`👀 Beim Gegner: ${esc(text)} <span class="conf">${Math.round(conf)}%</span>`, "opp");

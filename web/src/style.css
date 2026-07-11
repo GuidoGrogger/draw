@@ -182,7 +182,7 @@ input:focus, select:focus { border-color: var(--accent-2); }
   font-size: .9rem; animation: slideIn .25s ease;
 }
 .guess-item.hit { background: rgba(95,214,138,.18); border: 1px solid var(--good); }
-.guess-item.cheat { background: rgba(255,107,107,.15); border: 1px solid var(--bad); }
+.guess-item.cheat { background: rgba(255,180,84,.14); border: 1px solid var(--accent); }
 .guess-item.opp { border-left: 3px solid var(--accent-2); }
 .guess-item .conf { color: var(--muted); font-size: .78rem; }
 @keyframes slideIn { from { opacity: 0; transform: translateY(6px); } }

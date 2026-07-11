@@ -74,7 +74,7 @@ export class DuelGame {
         if (msg.who === this.playerId) {
           this.ui.feedCheat();
         } else {
-          this.ui.toast("🚨 Dein Gegner hat versucht zu schummeln!", "bad");
+          this.ui.toast("✍️ Beim Gegner sah es nach Text aus – der Check zählt nicht.", "bad");
         }
         break;
 
@@ -168,7 +168,7 @@ export class DuelGame {
         : iWon
           ? `Claude hat deine Zeichnung von „${msg.word}" zuerst erkannt!`
           : `Claude hat die Zeichnung deines Gegners zuerst erkannt („${msg.word}").`) +
-      (msg.cheated ? "\n🚨 Runde wegen Schummelns entschieden!" : "") +
+      (msg.cheated ? "\n✍️ Runde entschieden – im Bild stand Text." : "") +
       `\nStand: ${msg.scores[this.playerId] ?? 0} : ${this._oppScore(msg.scores)}`;
 
     this.ui.showResult({
