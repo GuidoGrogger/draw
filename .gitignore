@@ -1,0 +1,9 @@
+# Dependencies
+node_modules/
+
+# Laufzeit / lokale Umgebung
+.env
+*.log
+
+# OS / Editor
+.DS_Store

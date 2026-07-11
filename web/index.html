@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Draw &amp; Guess – Claude errät deine Zeichnung</title>
+  <link rel="stylesheet" href="src/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>">
+</head>
+<body>
+
+  <!-- Zugangscode -->
+  <div id="screen-access" class="screen">
+    <div class="card">
+      <h1>🎨 Draw &amp; Guess</h1>
+      <p class="subtitle">Male einen Begriff – Claude errät ihn.</p>
+      <label for="access-code">Zugangscode</label>
+      <input type="password" id="access-code" placeholder="Zugangscode eingeben" autocomplete="current-password">
+      <label class="checkbox-row">
+        <input type="checkbox" id="access-remember" checked>
+        <span>Im Browser merken</span>
+      </label>
+      <button id="access-submit" class="btn primary">Los geht's</button>
+      <p id="access-error" class="error hidden"></p>
+    </div>
+  </div>
+
+  <!-- Hauptmenü -->
+  <div id="screen-menu" class="screen hidden">
+    <div class="card">
+      <h1>🎨 Draw &amp; Guess</h1>
+      <p class="subtitle">Wie willst du spielen?</p>
+      <button id="menu-solo" class="btn primary big">🖌️ Solo spielen</button>
+      <button id="menu-duel-create" class="btn big">⚔️ Duell erstellen</button>
+      <div class="join-row">
+        <input type="text" id="join-code" placeholder="CODE" maxlength="4" autocapitalize="characters">
+        <button id="menu-duel-join" class="btn">Duell beitreten</button>
+      </div>
+      <div class="settings-row">
+        <label for="setting-interval">KI-Check alle</label>
+        <select id="setting-interval">
+          <option value="10">10 s</option>
+          <option value="20" selected>20 s</option>
+          <option value="30">30 s</option>
+        </select>
+        <label for="setting-category">Kategorie</label>
+        <select id="setting-category">
+          <option value="alle" selected>Alle</option>
+        </select>
+      </div>
+      <p class="hint" id="menu-highscore"></p>
+      <button id="menu-logout" class="btn small ghost">Zugangscode ändern</button>
+    </div>
+  </div>
+
+  <!-- Duell-Lobby -->
+  <div id="screen-lobby" class="screen hidden">
+    <div class="card">
+      <h1>⚔️ Duell-Lobby</h1>
+      <p class="subtitle">Teile diesen Code mit deinem Gegner:</p>
+      <div id="lobby-code" class="room-code">····</div>
+      <p id="lobby-status" class="hint">Warte auf Gegner …</p>
+      <button id="lobby-cancel" class="btn ghost">Abbrechen</button>
+    </div>
+  </div>
+
+  <!-- Spiel (Solo & Duell teilen sich den Screen) -->
+  <div id="screen-game" class="screen hidden">
+    <div class="game-layout">
+      <header class="game-header">
+        <div class="word-box">
+          <span class="label">Dein Begriff:</span>
+          <span id="game-word">—</span>
+        </div>
+        <div id="game-round" class="round-box hidden">Runde <span id="round-num">1</span>/5</div>
+        <div class="timer-box"><span id="game-timer">120</span>s</div>
+      </header>
+
+      <div class="game-main">
+        <div class="canvas-wrap">
+          <canvas id="draw-canvas" width="800" height="600"></canvas>
+          <div id="canvas-overlay" class="canvas-overlay hidden"></div>
+        </div>
+
+        <aside class="side-panel">
+          <div id="duel-score" class="duel-score hidden">
+            <div class="score-me">Du: <span id="score-me">0</span></div>
+            <div class="score-opp"><span id="opp-name">Gegner</span>: <span id="score-opp">0</span></div>
+          </div>
+          <div class="guess-feed-title">🤖 Claude rät …</div>
+          <div id="guess-feed" class="guess-feed"></div>
+          <button id="btn-guess-now" class="btn primary">Jetzt raten! <span id="guess-cooldown"></span></button>
+          <div id="next-check" class="hint">Nächster Auto-Check in <span id="next-check-s">–</span> s</div>
+        </aside>
+      </div>
+
+      <footer class="toolbar">
+        <div class="colors" id="color-row"></div>
+        <div class="sizes" id="size-row"></div>
+        <button id="tool-eraser" class="tool" title="Radierer">🧽</button>
+        <button id="tool-undo" class="tool" title="Rückgängig">↩️</button>
+        <button id="tool-clear" class="tool" title="Alles löschen">🗑️</button>
+        <button id="game-quit" class="btn ghost small">Beenden</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Runden-/Spielergebnis -->
+  <div id="screen-result" class="screen hidden">
+    <div class="card">
+      <h1 id="result-title">🎉</h1>
+      <p id="result-text" class="subtitle"></p>
+      <div id="result-replay-wrap" class="hidden">
+        <p class="hint">Zeichnung des Gegners:</p>
+        <canvas id="replay-canvas" width="400" height="300"></canvas>
+      </div>
+      <button id="result-next" class="btn primary big">Weiter</button>
+      <button id="result-menu" class="btn ghost">Zum Menü</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

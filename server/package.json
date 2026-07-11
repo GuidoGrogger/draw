@@ -1,0 +1,15 @@
+{
+  "name": "draw-guess-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Backend für Draw & Guess: Claude-Agent-SDK-Guess-API + WebSocket-Duell-Relay",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.0",
+    "ws": "^8.18.0"
+  }
+}
