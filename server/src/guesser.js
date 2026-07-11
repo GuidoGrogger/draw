@@ -39,7 +39,7 @@ const CHEAT_CONFIDENCE_THRESHOLD = 80;
 
 let running = 0;
 
-export async function guessDrawing(imageDataUrl) {
+export async function guessDrawing(imageDataUrl, excludeTerms = []) {
   if (running >= MAX_CONCURRENT) {
     const err = new Error("busy");
     err.code = "BUSY";
@@ -47,13 +47,24 @@ export async function guessDrawing(imageDataUrl) {
   }
   running++;
   try {
-    return await runGuess(imageDataUrl);
+    return await runGuess(imageDataUrl, excludeTerms);
   } finally {
     running--;
   }
 }
 
-async function runGuess(imageDataUrl) {
+// Bereits geratene, aber falsche Begriffe für den Prompt aufbereiten.
+function excludeHint(excludeTerms) {
+  const terms = (Array.isArray(excludeTerms) ? excludeTerms : [])
+    .filter((t) => typeof t === "string" && t.trim())
+    .map((t) => t.trim().slice(0, 60))
+    .slice(0, 30);
+  if (!terms.length) return "";
+  return ` Diese Begriffe wurden in vorherigen Checks schon geraten und waren FALSCH: ` +
+    `${terms.join(", ")}. Nenne sie NICHT erneut – schlage nur andere, neue Begriffe vor.`;
+}
+
+async function runGuess(imageDataUrl, excludeTerms = []) {
   const m = /^data:image\/(png|jpeg);base64,(.+)$/.exec(imageDataUrl || "");
   if (!m) throw new Error("Ungültiges Bildformat");
   const ext = m[1] === "png" ? "png" : "jpg";
@@ -67,7 +78,7 @@ async function runGuess(imageDataUrl) {
   try {
     let resultText = "";
     const q = query({
-      prompt: `Lies die Bilddatei ${file} mit dem Read-Tool und bewerte die Zeichnung wie im Systemprompt beschrieben. Antworte nur mit dem JSON.`,
+      prompt: `Lies die Bilddatei ${file} mit dem Read-Tool und bewerte die Zeichnung wie im Systemprompt beschrieben. Antworte nur mit dem JSON.` + excludeHint(excludeTerms),
       options: {
         model: MODEL,
         maxTurns: 4,

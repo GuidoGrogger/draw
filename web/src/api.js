@@ -34,14 +34,14 @@ export async function verifyAccess(code) {
 
 // Schickt den Canvas-Snapshot an die KI. Liefert
 // { guesses: [{term, confidence}], writtenText, comment, hit, disqualified }
-export async function requestGuess({ image, roomCode, playerId, targetWord }) {
+export async function requestGuess({ image, roomCode, playerId, targetWord, excludeTerms }) {
   const res = await fetch(API_BASE + "/api/guess", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "X-Access-Code": getAccessCode(),
     },
-    body: JSON.stringify({ image, roomCode, playerId, targetWord }),
+    body: JSON.stringify({ image, roomCode, playerId, targetWord, excludeTerms }),
   });
   if (res.status === 401) throw new Error("auth");
   if (res.status === 429) throw new Error("rate");
