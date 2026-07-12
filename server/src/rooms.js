@@ -6,7 +6,7 @@
 
 import { randomUUID } from "node:crypto";
 import { pickWord } from "../../web/src/words.js";
-import { createSession, recordWin, normalizeNickname } from "./db.js";
+import { createSession, recordWin, recordRound, normalizeNickname } from "./db.js";
 
 const TOTAL_ROUNDS = 3;
 const ROUND_SECONDS = 90;
@@ -153,6 +153,15 @@ function endRound(room, winnerId, { cheated = false, winnerImage = null } = {}) 
   clearTimeout(room.timer);
   const winner = winnerId ? room.players.get(winnerId) : null;
   if (winner) winner.score++;
+
+  // Wort-Statistik: jede Runde zählt (erraten oder nicht)
+  recordRound({
+    sessionId: room.sessionId,
+    mode: "multi",
+    word: room.word,
+    success: Boolean(winner),
+    durationS: winner ? (Date.now() - room.roundStartAt) / 1000 : null,
+  });
 
   broadcast(room, {
     type: "round_end",

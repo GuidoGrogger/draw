@@ -97,6 +97,12 @@
     td.num, th.num { text-align: right; }
     .table-scroll { overflow-x: auto; }
     .badge { border-radius: 6px; padding: 2px 7px; font-size: .74rem; background: var(--card-2); border: 1px solid var(--border-2); }
+
+    /* Wort-Statistik: Quote als Mini-Meter + Prozentwert */
+    .rate-cell { display: flex; align-items: center; gap: 8px; min-width: 130px; }
+    .rate-bar { flex: 1; height: 8px; border-radius: 4px; background: var(--bar-track); overflow: hidden; }
+    .rate-bar > i { display: block; height: 100%; background: var(--bar); border-radius: 4px; }
+    .rate-val { font-variant-numeric: tabular-nums; min-width: 44px; text-align: right; }
   </style>
 </head>
 <body>
@@ -144,6 +150,22 @@
       <div class="card chart">
         <h2>API-Kosten pro Monat (€)</h2>
         <div id="chart-months"></div>
+      </div>
+
+      <div class="card">
+        <h2>Wort-Statistik</h2>
+        <p class="sub">Wie schwer sind die Begriffe? Erfolgsquote und Zeit bis zum Treffer
+          (erfasst seit Einführung der Statistik).</p>
+        <div class="table-scroll">
+          <table id="words-table">
+            <thead>
+              <tr><th>Begriff</th><th class="num">Runden</th><th class="num">Erraten</th>
+                  <th>Quote</th><th class="num">Ø Zeit</th><th class="num">Beste Zeit</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="sub hidden" id="words-empty">Noch keine Runden erfasst — einfach spielen, dann füllt sich das hier.</p>
       </div>
 
       <div class="card">

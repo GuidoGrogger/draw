@@ -1,5 +1,5 @@
 import { pickWord } from "./words.js";
-import { requestGuess, uploadWinStrokes } from "./api.js";
+import { requestGuess, uploadWinStrokes, reportRoundTimeout } from "./api.js";
 
 const ROUND_SECONDS = 180;
 
@@ -126,6 +126,7 @@ export class SoloGame {
     this.ui.stopAutoCheck();
     this.ui.canvas.enabled = false;
     this.streak = 0;
+    reportRoundTimeout(this.sessionId, this.word); // Wort-Statistik: nicht erraten
     this.ui.showResult({
       title: "⏰ Zeit um!",
       text: `Claude hat „${this.word}" leider nicht erkannt.\nGesamt: ${this.score} Punkte`,
