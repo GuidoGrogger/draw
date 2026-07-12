@@ -1,5 +1,5 @@
-import { pickWord } from "./words.js";
-import { requestGuess, uploadWinStrokes, reportRoundTimeout } from "./api.js";
+import { pickWord } from "./words.js?v=3";
+import { requestGuess, uploadWinStrokes, reportRoundTimeout } from "./api.js?v=3";
 
 const ROUND_SECONDS = 180;
 
