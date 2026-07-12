@@ -7,23 +7,28 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    /* Helles, freundliches Theme mit Grün (passend zur App) */
     :root {
-      --bg: #10141f;
-      --card: #1b2233;
-      --card-2: #232c42;
-      --border: #2c3752;
-      --text: #eef1f8;
-      --muted: #9aa5bf;
-      --accent: #ffb454;
-      --bar: #3d97dc;        /* validierte Diagramm-Farbe (dunkler Modus) */
-      --bar-track: #24405c;  /* hellere Stufe derselben Blau-Rampe (Meter-Track) */
-      --danger: #e05d5d;
-      --good: #5fd68a;
+      --bg: #f1f7f2;
+      --card: #ffffff;
+      --card-2: #eef5ef;
+      --border: #d9e6db;
+      --border-2: #c8dbcc;
+      --text: #24352b;
+      --muted: #677d6e;
+      --accent: #178a4e;
+      --bar: #219653;        /* validierte Diagramm-Farbe (heller Modus, weiße Fläche) */
+      --bar-hover: #1a7a43;
+      --bar-track: #d5ecdd;  /* hellere Stufe derselben Grün-Rampe (Meter-Track) */
+      --danger: #c94036;
+      --warn: #d9822b;
+      --good: #1f9d55;
       --radius: 14px;
+      --shadow: 0 12px 36px rgba(31, 74, 51, .12);
     }
     body {
       font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-      background: radial-gradient(1200px 800px at 20% -10%, #1c2740 0%, var(--bg) 55%);
+      background: radial-gradient(1200px 800px at 20% -10%, #d8efdf 0%, var(--bg) 55%);
       color: var(--text);
       min-height: 100vh;
       padding: 24px 16px 60px;
@@ -34,16 +39,16 @@
     .sub { color: var(--muted); font-size: .88rem; }
     .card {
       background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-      padding: 18px;
+      padding: 18px; box-shadow: var(--shadow);
     }
     .hidden { display: none !important; }
     input, button {
-      font: inherit; border-radius: 10px; border: 1px solid #34405f;
-      padding: 10px 14px; background: var(--card-2); color: var(--text);
+      font: inherit; border-radius: 10px; border: 1px solid var(--border-2);
+      padding: 10px 14px; background: var(--card); color: var(--text);
     }
-    input:focus { outline: none; border-color: var(--bar); }
-    button.primary { background: var(--accent); border-color: var(--accent); color: #221708; font-weight: 700; cursor: pointer; }
-    button.primary:hover { filter: brightness(1.1); }
+    input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--bar-track); }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #ffffff; font-weight: 700; cursor: pointer; }
+    button.primary:hover { filter: brightness(1.08); }
     .error { color: var(--danger); font-size: .9rem; margin-top: 8px; }
 
     /* Login */
@@ -58,24 +63,24 @@
     /* Meter: Monatskosten vs. Limit */
     .meter { height: 14px; border-radius: 7px; background: var(--bar-track); overflow: hidden; margin-top: 10px; }
     .meter > i { display: block; height: 100%; background: var(--bar); border-radius: 7px; transition: width .6s ease; }
-    .meter.warn > i { background: var(--accent); }
+    .meter.warn > i { background: var(--warn); }
     .meter.over > i { background: var(--danger); }
 
     /* Diagramme */
     .chart { width: 100%; }
     .chart svg { display: block; width: 100%; height: auto; }
     .chart text { font-family: inherit; font-size: 11px; fill: var(--muted); }
-    .chart .gridline { stroke: #26304a; stroke-width: 1; }
+    .chart .gridline { stroke: #e2ece4; stroke-width: 1; }
     .chart .limitline { stroke: var(--danger); stroke-width: 1; }
     .chart .limitlabel { fill: var(--danger); font-weight: 600; }
     .chart .bar { fill: var(--bar); }
-    .chart .bar:hover { fill: #5aabe6; }
+    .chart .bar:hover { fill: var(--bar-hover); }
 
     #tooltip {
       position: fixed; pointer-events: none; z-index: 10;
-      background: var(--card-2); border: 1px solid #34405f; border-radius: 8px;
+      background: var(--card); border: 1px solid var(--border-2); border-radius: 8px;
       padding: 7px 10px; font-size: .82rem; display: none;
-      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+      box-shadow: 0 8px 24px rgba(31, 74, 51, .18);
     }
     #tooltip b { color: var(--text); }
     #tooltip span { color: var(--muted); }
@@ -87,11 +92,11 @@
 
     /* Sessions-Tabelle */
     table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: .86rem; }
-    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #26304a; font-variant-numeric: tabular-nums; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
     th { color: var(--muted); font-weight: 600; font-size: .78rem; }
     td.num, th.num { text-align: right; }
     .table-scroll { overflow-x: auto; }
-    .badge { border-radius: 6px; padding: 2px 7px; font-size: .74rem; background: var(--card-2); border: 1px solid #34405f; }
+    .badge { border-radius: 6px; padding: 2px 7px; font-size: .74rem; background: var(--card-2); border: 1px solid var(--border-2); }
   </style>
 </head>
 <body>

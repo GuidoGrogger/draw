@@ -1,23 +1,29 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Helles, freundliches Theme mit Grün */
 :root {
-  --bg: #10141f;
-  --card: #1b2233;
-  --card-2: #232c42;
-  --text: #eef1f8;
-  --muted: #9aa5bf;
-  --accent: #ffb454;
-  --accent-2: #6cc7ff;
-  --good: #5fd68a;
-  --bad: #ff6b6b;
+  --bg: #f1f7f2;
+  --card: #ffffff;
+  --card-2: #eef5ef;
+  --border: #d9e6db;
+  --border-2: #c8dbcc;
+  --text: #24352b;
+  --muted: #677d6e;
+  --accent: #178a4e;      /* freundliches Grün (validiert, weißer Button-Text ok) */
+  --accent-soft: #dcefe2; /* zarte Grün-Fläche für Hover/Hits */
+  --accent-2: #2b77b8;    /* sekundär: freundliches Blau */
+  --good: #1f9d55;
+  --bad: #c94036;
+  --warn: #d9822b;
   --radius: 14px;
+  --shadow: 0 12px 36px rgba(31, 74, 51, .12);
 }
 
 html, body { height: 100%; overscroll-behavior: none; }
 
 body {
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-  background: radial-gradient(1200px 800px at 20% -10%, #1c2740 0%, var(--bg) 55%);
+  background: radial-gradient(1200px 800px at 20% -10%, #d8efdf 0%, var(--bg) 55%);
   color: var(--text);
   overflow: hidden;
   /* Seite komplett fixieren, damit auf dem Handy nichts wegscrollt/wackelt */
@@ -52,12 +58,12 @@ input, select, textarea { -webkit-user-select: text; user-select: text; }
 
 .card {
   background: var(--card);
-  border: 1px solid #2c3752;
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 32px 28px;
   width: 100%; max-width: 420px;
   display: flex; flex-direction: column; gap: 14px;
-  box-shadow: 0 18px 60px rgba(0,0,0,.45);
+  box-shadow: var(--shadow);
   text-align: center;
 }
 
@@ -66,15 +72,15 @@ h1 { font-size: 1.7rem; }
 label { text-align: left; font-size: .85rem; color: var(--muted); }
 
 input, select {
-  background: var(--card-2);
-  border: 1px solid #34405f;
+  background: var(--card);
+  border: 1px solid var(--border-2);
   color: var(--text);
   border-radius: 10px;
   padding: 12px 14px;
   font-size: 1rem;
   outline: none;
 }
-input:focus, select:focus { border-color: var(--accent-2); }
+input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
 .checkbox-row { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .9rem; }
 .checkbox-row input { width: auto; }
@@ -82,19 +88,20 @@ input:focus, select:focus { border-color: var(--accent-2); }
 .btn {
   background: var(--card-2);
   color: var(--text);
-  border: 1px solid #34405f;
+  border: 1px solid var(--border-2);
   border-radius: 10px;
   padding: 12px 18px;
   font-size: 1rem;
   cursor: pointer;
-  transition: transform .06s ease, filter .15s ease;
+  transition: transform .06s ease, filter .15s ease, background .15s ease;
 }
-.btn:hover { filter: brightness(1.15); }
+.btn:hover { filter: brightness(.96); }
 .btn:active { transform: scale(.98); }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: #221708; font-weight: 700; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #ffffff; font-weight: 700; }
+.btn.primary:hover { filter: brightness(1.08); }
 .btn.big { padding: 16px 18px; font-size: 1.1rem; }
 .btn.small { padding: 7px 12px; font-size: .85rem; }
-.btn.ghost { background: transparent; border-color: #34405f; color: var(--muted); }
+.btn.ghost { background: transparent; border-color: var(--border-2); color: var(--muted); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 
 .error { color: var(--bad); font-size: .9rem; }
@@ -107,7 +114,7 @@ input:focus, select:focus { border-color: var(--accent-2); }
 .settings-row {
   display: grid; grid-template-columns: auto 1fr; gap: 8px 10px;
   align-items: center; text-align: left;
-  border-top: 1px solid #2c3752; padding-top: 14px;
+  border-top: 1px solid var(--border); padding-top: 14px;
 }
 
 .room-code {
@@ -128,20 +135,20 @@ input:focus, select:focus { border-color: var(--accent-2); }
   display: flex; align-items: center; gap: 14px;
 }
 .brand-box {
-  background: var(--card); border: 1px solid #2c3752; border-radius: 10px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
   padding: 10px 14px; flex: 1; font-size: 1.1rem;
 }
 /* Der Begriff steht bewusst UNTER der Zeichenfläche (Overlay-Problem auf dem Handy) */
 .word-box {
-  background: var(--card); border: 1px solid #2c3752; border-radius: 10px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
   padding: 10px 16px;
   font-size: 1.15rem; text-align: center;
 }
 .word-box .label { color: var(--muted); font-size: .8rem; margin-right: 8px; }
 #game-word { font-weight: 800; color: var(--accent); text-transform: capitalize; }
-.round-box { background: var(--card); border: 1px solid #2c3752; border-radius: 10px; padding: 10px 14px; }
+.round-box { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; }
 .timer-box {
-  background: var(--card); border: 1px solid #2c3752; border-radius: 10px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
   padding: 10px 16px; font-size: 1.2rem; font-weight: 800; min-width: 84px; text-align: center;
 }
 .timer-box.low { color: var(--bad); animation: pulse 1s infinite; }
@@ -162,11 +169,11 @@ input:focus, select:focus { border-color: var(--accent-2); }
   padding-bottom: 2px;
 }
 .opp-box {
-  background: var(--card); border: 1px solid #2c3752; border-radius: 10px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
   padding: 6px; flex-shrink: 0; text-align: center;
 }
 .opp-box canvas {
-  background: #fff; border-radius: 6px; display: block;
+  background: #fff; border: 1px solid var(--border); border-radius: 6px; display: block;
   width: 140px; height: 105px;
 }
 .opp-label {
@@ -177,12 +184,12 @@ input:focus, select:focus { border-color: var(--accent-2); }
 .canvas-wrap {
   flex: 1; position: relative;
   display: flex; align-items: center; justify-content: center;
-  background: var(--card); border: 1px solid #2c3752; border-radius: var(--radius);
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 8px; min-width: 0; min-height: 0;
   touch-action: none;
 }
 #draw-canvas {
-  background: #fff; border-radius: 8px;
+  background: #fff; border: 1px solid var(--border); border-radius: 8px;
   max-width: 100%; max-height: 100%;
   touch-action: none;
   -webkit-user-select: none; user-select: none;
@@ -195,14 +202,14 @@ input:focus, select:focus { border-color: var(--accent-2); }
   text-align: left;
 }
 .lobby-player {
-  background: var(--card-2); border: 1px solid #34405f; border-radius: 10px;
+  background: var(--card-2); border: 1px solid var(--border); border-radius: 10px;
   padding: 10px 12px;
   animation: slideIn .25s ease;
 }
 
 /* Ergebnis: Siegerzeichnung */
 #result-image {
-  width: 100%; max-width: 320px; border-radius: 8px; background: #fff;
+  width: 100%; max-width: 320px; border: 1px solid var(--border); border-radius: 8px; background: #fff;
 }
 
 .side-panel {
@@ -211,14 +218,14 @@ input:focus, select:focus { border-color: var(--accent-2); }
 }
 .duel-score {
   display: flex; justify-content: space-between; gap: 8px;
-  background: var(--card); border: 1px solid #2c3752; border-radius: 10px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
   padding: 10px 12px; font-weight: 700;
 }
 .score-opp { color: var(--accent-2); }
 .guess-feed-title { color: var(--muted); font-size: .85rem; }
 .guess-feed {
   flex: 1; overflow-y: auto;
-  background: var(--card); border: 1px solid #2c3752; border-radius: 10px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
   padding: 10px; display: flex; flex-direction: column; gap: 8px;
   min-height: 120px;
 }
@@ -226,8 +233,8 @@ input:focus, select:focus { border-color: var(--accent-2); }
   background: var(--card-2); border-radius: 8px; padding: 8px 10px;
   font-size: .9rem; animation: slideIn .25s ease;
 }
-.guess-item.hit { background: rgba(95,214,138,.18); border: 1px solid var(--good); }
-.guess-item.cheat { background: rgba(255,180,84,.14); border: 1px solid var(--accent); }
+.guess-item.hit { background: var(--accent-soft); border: 1px solid var(--good); }
+.guess-item.cheat { background: rgba(217, 130, 43, .12); border: 1px solid var(--warn); }
 .guess-item.opp { border-left: 3px solid var(--accent-2); }
 .guess-item .conf { color: var(--muted); font-size: .78rem; }
 @keyframes slideIn { from { opacity: 0; transform: translateY(6px); } }
@@ -236,31 +243,31 @@ input:focus, select:focus { border-color: var(--accent-2); }
 
 .toolbar {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  background: var(--card); border: 1px solid #2c3752; border-radius: var(--radius);
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 8px 12px;
 }
 .colors, .sizes { display: flex; gap: 6px; }
 .color-swatch {
   width: 30px; height: 30px; border-radius: 50%;
-  border: 2px solid transparent; cursor: pointer;
+  border: 2px solid rgba(0, 0, 0, .08); cursor: pointer;
 }
 .color-swatch.active { border-color: var(--text); transform: scale(1.12); }
 .size-dot {
   width: 34px; height: 34px; border-radius: 8px;
-  background: var(--card-2); border: 1px solid #34405f;
+  background: var(--card-2); border: 1px solid var(--border-2);
   display: flex; align-items: center; justify-content: center; cursor: pointer;
 }
-.size-dot.active { border-color: var(--accent); }
+.size-dot.active { border-color: var(--accent); background: var(--accent-soft); }
 .size-dot i { background: var(--text); border-radius: 50%; display: block; }
 .tool {
   width: 38px; height: 38px; border-radius: 8px;
-  background: var(--card-2); border: 1px solid #34405f;
+  background: var(--card-2); border: 1px solid var(--border-2);
   font-size: 1.1rem; cursor: pointer;
 }
-.tool.active { border-color: var(--accent); }
+.tool.active { border-color: var(--accent); background: var(--accent-soft); }
 #game-quit { margin-left: auto; }
 
-#replay-canvas { background: #fff; border-radius: 8px; width: 100%; }
+#replay-canvas { background: #fff; border: 1px solid var(--border); border-radius: 8px; width: 100%; }
 
 /* --- Social-Feed (Startseite): Wer hat zuletzt gewonnen? --- */
 .feed { width: 100%; text-align: center; }
@@ -271,14 +278,15 @@ input:focus, select:focus { border-color: var(--accent-2); }
   gap: 12px;
 }
 .feed-card {
-  background: var(--card); border: 1px solid #2c3752; border-radius: var(--radius);
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 10px; cursor: pointer; text-align: left;
+  box-shadow: 0 4px 14px rgba(31, 74, 51, .08);
   animation: popIn .5s cubic-bezier(.2, .9, .3, 1.2) both;
-  transition: transform .15s ease, border-color .15s ease;
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
-.feed-card:hover { transform: translateY(-3px); border-color: var(--accent-2); }
+.feed-card:hover { transform: translateY(-3px); border-color: var(--accent); box-shadow: var(--shadow); }
 .feed-pic canvas, .feed-pic img {
-  width: 100%; border-radius: 8px; background: #fff; display: block;
+  width: 100%; border: 1px solid var(--border); border-radius: 8px; background: #fff; display: block;
   aspect-ratio: 4 / 3; object-fit: cover;
 }
 .feed-meta { padding-top: 8px; display: flex; flex-direction: column; gap: 3px; }
@@ -297,8 +305,9 @@ input:focus, select:focus { border-color: var(--accent-2); }
 
 .toast {
   position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%);
-  background: var(--card-2); border: 1px solid #34405f; border-radius: 10px;
+  background: var(--card); border: 1px solid var(--border-2); border-radius: 10px;
   padding: 12px 20px; z-index: 50;
+  box-shadow: var(--shadow);
   animation: slideIn .25s ease;
   max-width: 90vw;
 }
