@@ -9,77 +9,108 @@
 </head>
 <body>
 
-  <!-- Zugangscode -->
-  <div id="screen-access" class="screen">
-    <div class="card">
-      <h1>🎨 Draw &amp; Guess</h1>
-      <p class="subtitle">Male einen Begriff – Claude errät ihn.</p>
-      <label for="access-code">Zugangscode</label>
-      <input type="password" id="access-code" placeholder="Zugangscode eingeben" autocomplete="current-password">
-      <label class="checkbox-row">
-        <input type="checkbox" id="access-remember" checked>
-        <span>Im Browser merken</span>
-      </label>
-      <button id="access-submit" class="btn primary">Los geht's</button>
-      <p id="access-error" class="error hidden"></p>
+  <!-- Zugangscode + öffentlicher Feed -->
+  <div id="screen-access" class="screen scrolling">
+    <div class="screen-column">
+      <div class="card">
+        <h1>🎨 Draw &amp; Guess</h1>
+        <p class="subtitle">Male einen Begriff – Claude errät ihn.</p>
+        <label for="access-code">Zugangscode</label>
+        <input type="password" id="access-code" placeholder="Zugangscode eingeben" autocomplete="current-password">
+        <label class="checkbox-row">
+          <input type="checkbox" id="access-remember" checked>
+          <span>Im Browser merken</span>
+        </label>
+        <button id="access-submit" class="btn primary">Los geht's</button>
+        <p id="access-error" class="error hidden"></p>
+      </div>
+      <div class="feed-slot"></div>
     </div>
   </div>
 
   <!-- Hauptmenü -->
-  <div id="screen-menu" class="screen hidden">
-    <div class="card">
-      <h1>🎨 Draw &amp; Guess</h1>
-      <p class="subtitle">Wie willst du spielen?</p>
-      <button id="menu-solo" class="btn primary big">🖌️ Solo spielen</button>
-      <button id="menu-duel-create" class="btn big">⚔️ Duell erstellen</button>
-      <div class="join-row">
-        <input type="text" id="join-code" placeholder="CODE" maxlength="4" autocapitalize="characters">
-        <button id="menu-duel-join" class="btn">Duell beitreten</button>
+  <div id="screen-menu" class="screen scrolling">
+    <div class="screen-column">
+      <div class="card">
+        <h1>🎨 Draw &amp; Guess</h1>
+        <p class="subtitle">Wie willst du spielen?</p>
+        <label for="nickname">Dein Nickname (optional)</label>
+        <input type="text" id="nickname" maxlength="24" placeholder="Leer = anonymer Name">
+        <p class="hint privacy-hint">ℹ️ Dein Name und gewonnene Runden (Zeichnung, Begriff, Zeit)
+          können öffentlich auf der Startseite angezeigt werden.</p>
+        <button id="menu-solo" class="btn primary big">🖌️ Solo spielen</button>
+        <button id="menu-party-create" class="btn big">🎉 Multiplayer starten</button>
+        <div class="join-row">
+          <input type="text" id="join-code" placeholder="CODE" maxlength="4" autocapitalize="characters">
+          <button id="menu-party-join" class="btn">Beitreten</button>
+        </div>
+        <div class="settings-row">
+          <label for="setting-interval">KI-Check alle</label>
+          <select id="setting-interval">
+            <option value="10" selected>10 s</option>
+            <option value="20">20 s</option>
+            <option value="30">30 s</option>
+          </select>
+          <label for="setting-category">Kategorie</label>
+          <select id="setting-category">
+            <option value="alle" selected>Alle</option>
+          </select>
+        </div>
+        <p class="hint" id="menu-highscore"></p>
+        <button id="menu-logout" class="btn small ghost">Zugangscode ändern</button>
       </div>
-      <div class="settings-row">
-        <label for="setting-interval">KI-Check alle</label>
-        <select id="setting-interval">
-          <option value="10" selected>10 s</option>
-          <option value="20">20 s</option>
-          <option value="30">30 s</option>
-        </select>
-        <label for="setting-category">Kategorie</label>
-        <select id="setting-category">
-          <option value="alle" selected>Alle</option>
-        </select>
-      </div>
-      <p class="hint" id="menu-highscore"></p>
-      <button id="menu-logout" class="btn small ghost">Zugangscode ändern</button>
+      <div class="feed-slot"></div>
     </div>
   </div>
 
-  <!-- Duell-Lobby -->
-  <div id="screen-lobby" class="screen hidden">
+  <!-- Einladung angenommen (Link geklickt) -->
+  <div id="screen-invite" class="screen">
     <div class="card">
-      <h1>⚔️ Duell-Lobby</h1>
-      <p class="subtitle">Teile diesen Code mit deinem Gegner:</p>
+      <h1>🎉 Du bist eingeladen!</h1>
+      <p class="subtitle">Jemand möchte mit dir Draw &amp; Guess spielen.<br>Raum: <b id="invite-code">····</b></p>
+      <label for="invite-nickname">Dein Nickname (optional)</label>
+      <input type="text" id="invite-nickname" maxlength="24" placeholder="Leer = anonymer Name">
+      <p class="hint privacy-hint">ℹ️ Dein Name und gewonnene Runden (Zeichnung, Begriff, Zeit)
+        können öffentlich auf der Startseite angezeigt werden.</p>
+      <button id="invite-join" class="btn primary big">Mitspielen</button>
+      <button id="invite-decline" class="btn ghost">Lieber nicht</button>
+    </div>
+  </div>
+
+  <!-- Multiplayer-Lobby -->
+  <div id="screen-lobby" class="screen">
+    <div class="card">
+      <h1>🎉 Multiplayer-Lobby</h1>
       <div id="lobby-code" class="room-code">····</div>
-      <p id="lobby-status" class="hint">Warte auf Gegner …</p>
-      <button id="lobby-cancel" class="btn ghost">Abbrechen</button>
+      <button id="lobby-share" class="btn primary">📤 Einladungslink teilen</button>
+      <p id="lobby-status" class="hint">Warte …</p>
+      <div id="lobby-players" class="lobby-players"></div>
+      <button id="lobby-start" class="btn primary big hidden" disabled>▶️ Spiel starten</button>
+      <button id="lobby-cancel" class="btn ghost">Verlassen</button>
     </div>
   </div>
 
-  <!-- Spiel (Solo & Duell teilen sich den Screen) -->
-  <div id="screen-game" class="screen hidden">
+  <!-- Spiel (Solo & Multiplayer teilen sich den Screen) -->
+  <div id="screen-game" class="screen">
     <div class="game-layout">
       <header class="game-header">
-        <div class="word-box">
-          <span class="label">Dein Begriff:</span>
-          <span id="game-word">—</span>
-        </div>
-        <div id="game-round" class="round-box hidden">Runde <span id="round-num">1</span>/5</div>
+        <div class="brand-box">🎨</div>
+        <div id="game-round" class="round-box hidden">Runde <span id="round-num">1</span>/3</div>
         <div class="timer-box"><span id="game-timer">120</span>s</div>
       </header>
 
       <div class="game-main">
-        <div class="canvas-wrap">
-          <canvas id="draw-canvas" width="800" height="600"></canvas>
-          <div id="canvas-overlay" class="canvas-overlay hidden"></div>
+        <div class="canvas-col">
+          <div class="canvas-wrap">
+            <canvas id="draw-canvas" width="800" height="600"></canvas>
+          </div>
+          <!-- Begriff bewusst UNTER der Zeichenfläche (auf dem Handy verdeckte
+               ihn sonst ein Overlay bzw. konnten Zuschauer mitlesen) -->
+          <div class="word-box">
+            <span class="label">Dein Begriff:</span>
+            <span id="game-word">—</span>
+          </div>
+          <div id="opp-strip" class="opp-strip hidden"></div>
         </div>
 
         <aside class="side-panel">
@@ -106,10 +137,14 @@
   </div>
 
   <!-- Runden-/Spielergebnis -->
-  <div id="screen-result" class="screen hidden">
+  <div id="screen-result" class="screen">
     <div class="card">
       <h1 id="result-title">🎉</h1>
       <p id="result-text" class="subtitle"></p>
+      <div id="result-image-wrap" class="hidden">
+        <p class="hint" id="result-image-caption">Siegerzeichnung:</p>
+        <img id="result-image" alt="Siegerzeichnung">
+      </div>
       <div id="result-replay-wrap" class="hidden">
         <p class="hint">Zeichnung des Gegners:</p>
         <canvas id="replay-canvas" width="400" height="300"></canvas>
@@ -120,6 +155,13 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
+
+  <!-- Vorlage für den Social-Feed (wird per JS in die feed-slots gehängt) -->
+  <div id="feed" class="feed hidden">
+    <h2 class="feed-title">🏆 Zuletzt erraten</h2>
+    <p class="hint">Diese Zeichnungen hat Claude erkannt – male mit und tauch hier auf!</p>
+    <div id="feed-list" class="feed-list"></div>
+  </div>
 
   <script type="module" src="src/main.js"></script>
 </body>

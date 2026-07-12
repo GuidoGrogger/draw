@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Draw &amp; Guess – Admin</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #10141f;
+      --card: #1b2233;
+      --card-2: #232c42;
+      --border: #2c3752;
+      --text: #eef1f8;
+      --muted: #9aa5bf;
+      --accent: #ffb454;
+      --bar: #3d97dc;        /* validierte Diagramm-Farbe (dunkler Modus) */
+      --bar-track: #24405c;  /* hellere Stufe derselben Blau-Rampe (Meter-Track) */
+      --danger: #e05d5d;
+      --good: #5fd68a;
+      --radius: 14px;
+    }
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: radial-gradient(1200px 800px at 20% -10%, #1c2740 0%, var(--bg) 55%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px 16px 60px;
+    }
+    .wrap { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+    h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.05rem; margin-bottom: 4px; }
+    .sub { color: var(--muted); font-size: .88rem; }
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 18px;
+    }
+    .hidden { display: none !important; }
+    input, button {
+      font: inherit; border-radius: 10px; border: 1px solid #34405f;
+      padding: 10px 14px; background: var(--card-2); color: var(--text);
+    }
+    input:focus { outline: none; border-color: var(--bar); }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #221708; font-weight: 700; cursor: pointer; }
+    button.primary:hover { filter: brightness(1.1); }
+    .error { color: var(--danger); font-size: .9rem; margin-top: 8px; }
+
+    /* Login */
+    #login { max-width: 380px; margin: 10vh auto 0; display: flex; flex-direction: column; gap: 12px; text-align: center; }
+
+    /* KPI-Reihe */
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    .tile .label { color: var(--muted); font-size: .82rem; }
+    .tile .value { font-size: 1.7rem; font-weight: 600; margin-top: 4px; }
+    .tile .note { color: var(--muted); font-size: .78rem; margin-top: 4px; }
+
+    /* Meter: Monatskosten vs. Limit */
+    .meter { height: 14px; border-radius: 7px; background: var(--bar-track); overflow: hidden; margin-top: 10px; }
+    .meter > i { display: block; height: 100%; background: var(--bar); border-radius: 7px; transition: width .6s ease; }
+    .meter.warn > i { background: var(--accent); }
+    .meter.over > i { background: var(--danger); }
+
+    /* Diagramme */
+    .chart { width: 100%; }
+    .chart svg { display: block; width: 100%; height: auto; }
+    .chart text { font-family: inherit; font-size: 11px; fill: var(--muted); }
+    .chart .gridline { stroke: #26304a; stroke-width: 1; }
+    .chart .limitline { stroke: var(--danger); stroke-width: 1; }
+    .chart .limitlabel { fill: var(--danger); font-weight: 600; }
+    .chart .bar { fill: var(--bar); }
+    .chart .bar:hover { fill: #5aabe6; }
+
+    #tooltip {
+      position: fixed; pointer-events: none; z-index: 10;
+      background: var(--card-2); border: 1px solid #34405f; border-radius: 8px;
+      padding: 7px 10px; font-size: .82rem; display: none;
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    }
+    #tooltip b { color: var(--text); }
+    #tooltip span { color: var(--muted); }
+
+    /* Einstellungen */
+    .settings-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-top: 10px; }
+    .settings-form label { display: flex; flex-direction: column; gap: 5px; font-size: .82rem; color: var(--muted); }
+    .settings-form input { width: 130px; }
+
+    /* Sessions-Tabelle */
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: .86rem; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #26304a; font-variant-numeric: tabular-nums; }
+    th { color: var(--muted); font-weight: 600; font-size: .78rem; }
+    td.num, th.num { text-align: right; }
+    .table-scroll { overflow-x: auto; }
+    .badge { border-radius: 6px; padding: 2px 7px; font-size: .74rem; background: var(--card-2); border: 1px solid #34405f; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- Login (ADMIN_CODE) -->
+    <div id="login" class="card">
+      <h1>📊 Draw &amp; Guess Admin</h1>
+      <p class="sub">Geschützter Bereich – Admin-Code eingeben.</p>
+      <input type="password" id="admin-code" placeholder="Admin-Code" autocomplete="current-password">
+      <button id="admin-login" class="primary">Anmelden</button>
+      <p id="login-error" class="error hidden"></p>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dash" class="hidden" style="display: flex; flex-direction: column; gap: 18px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <h1>📊 Draw &amp; Guess Admin</h1>
+        <span class="sub" id="refresh-note"></span>
+        <button id="logout" style="margin-left:auto; cursor:pointer;">Abmelden</button>
+      </div>
+
+      <div class="kpis" id="kpis"></div>
+
+      <div class="card">
+        <h2>Monatslimit</h2>
+        <p class="sub" id="meter-label"></p>
+        <div class="meter" id="meter"><i style="width:0%"></i></div>
+        <form class="settings-form" id="settings-form">
+          <label>Limit pro Monat (€)
+            <input type="number" id="input-limit" min="0" max="10000" step="1">
+          </label>
+          <label>Kurs € pro $
+            <input type="number" id="input-rate" min="0.1" max="10" step="0.01">
+          </label>
+          <button class="primary" type="submit">Speichern</button>
+          <span class="sub" id="settings-saved"></span>
+        </form>
+      </div>
+
+      <div class="card chart">
+        <h2>API-Kosten pro Tag (letzte 30 Tage, €)</h2>
+        <div id="chart-days"></div>
+      </div>
+
+      <div class="card chart">
+        <h2>API-Kosten pro Monat (€)</h2>
+        <div id="chart-months"></div>
+      </div>
+
+      <div class="card">
+        <h2>Letzte Sessions</h2>
+        <p class="sub">Wer hat gespielt und was hat es gekostet?</p>
+        <div class="table-scroll">
+          <table id="sessions-table">
+            <thead>
+              <tr><th>Start</th><th>Modus</th><th>Spieler</th>
+                  <th class="num">KI-Checks</th><th class="num">Kosten ($)</th><th class="num">Siege</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tooltip"></div>
+  <script type="module" src="src/admin.js"></script>
+</body>
+</html>

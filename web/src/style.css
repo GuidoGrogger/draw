@@ -42,6 +42,14 @@ input, select, textarea { -webkit-user-select: text; user-select: text; }
   overscroll-behavior: contain;
 }
 
+/* Screens mit Feed dürfen scrollen und beginnen oben */
+.screen.scrolling { align-items: flex-start; }
+.screen-column {
+  display: flex; flex-direction: column; align-items: center; gap: 20px;
+  width: 100%; max-width: 640px; margin: 0 auto; padding: 12px 0 40px;
+}
+.screen-column .card { flex-shrink: 0; }
+
 .card {
   background: var(--card);
   border: 1px solid #2c3752;
@@ -119,10 +127,15 @@ input:focus, select:focus { border-color: var(--accent-2); }
 .game-header {
   display: flex; align-items: center; gap: 14px;
 }
+.brand-box {
+  background: var(--card); border: 1px solid #2c3752; border-radius: 10px;
+  padding: 10px 14px; flex: 1; font-size: 1.1rem;
+}
+/* Der Begriff steht bewusst UNTER der Zeichenfläche (Overlay-Problem auf dem Handy) */
 .word-box {
   background: var(--card); border: 1px solid #2c3752; border-radius: 10px;
-  padding: 10px 16px; flex: 1;
-  font-size: 1.15rem;
+  padding: 10px 16px;
+  font-size: 1.15rem; text-align: center;
 }
 .word-box .label { color: var(--muted); font-size: .8rem; margin-right: 8px; }
 #game-word { font-weight: 800; color: var(--accent); text-transform: capitalize; }
@@ -136,6 +149,29 @@ input:focus, select:focus { border-color: var(--accent-2); }
 
 .game-main {
   flex: 1; display: flex; gap: 10px; min-height: 0;
+}
+
+.canvas-col {
+  flex: 1; min-width: 0; min-height: 0;
+  display: flex; flex-direction: column; gap: 10px;
+}
+
+/* Live-Zeichnungen der Mitspieler (Multiplayer) */
+.opp-strip {
+  display: flex; gap: 10px; overflow-x: auto; flex-shrink: 0;
+  padding-bottom: 2px;
+}
+.opp-box {
+  background: var(--card); border: 1px solid #2c3752; border-radius: 10px;
+  padding: 6px; flex-shrink: 0; text-align: center;
+}
+.opp-box canvas {
+  background: #fff; border-radius: 6px; display: block;
+  width: 140px; height: 105px;
+}
+.opp-label {
+  color: var(--muted); font-size: .75rem; margin-top: 4px;
+  max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
 .canvas-wrap {
@@ -153,11 +189,20 @@ input:focus, select:focus { border-color: var(--accent-2); }
   cursor: crosshair;
   aspect-ratio: 4 / 3;
 }
-.canvas-overlay {
-  position: absolute; inset: 8px;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(16,20,31,.75); border-radius: 8px;
-  font-size: 2rem; font-weight: 800; text-align: center; padding: 20px;
+/* Lobby: Spielerliste */
+.lobby-players {
+  display: flex; flex-direction: column; gap: 6px;
+  text-align: left;
+}
+.lobby-player {
+  background: var(--card-2); border: 1px solid #34405f; border-radius: 10px;
+  padding: 10px 12px;
+  animation: slideIn .25s ease;
+}
+
+/* Ergebnis: Siegerzeichnung */
+#result-image {
+  width: 100%; max-width: 320px; border-radius: 8px; background: #fff;
 }
 
 .side-panel {
@@ -217,6 +262,39 @@ input:focus, select:focus { border-color: var(--accent-2); }
 
 #replay-canvas { background: #fff; border-radius: 8px; width: 100%; }
 
+/* --- Social-Feed (Startseite): Wer hat zuletzt gewonnen? --- */
+.feed { width: 100%; text-align: center; }
+.feed-title { font-size: 1.15rem; margin-bottom: 4px; }
+.feed > .hint { margin-bottom: 12px; }
+.feed-list {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+.feed-card {
+  background: var(--card); border: 1px solid #2c3752; border-radius: var(--radius);
+  padding: 10px; cursor: pointer; text-align: left;
+  animation: popIn .5s cubic-bezier(.2, .9, .3, 1.2) both;
+  transition: transform .15s ease, border-color .15s ease;
+}
+.feed-card:hover { transform: translateY(-3px); border-color: var(--accent-2); }
+.feed-pic canvas, .feed-pic img {
+  width: 100%; border-radius: 8px; background: #fff; display: block;
+  aspect-ratio: 4 / 3; object-fit: cover;
+}
+.feed-meta { padding-top: 8px; display: flex; flex-direction: column; gap: 3px; }
+.feed-word { font-weight: 800; color: var(--accent); }
+.feed-player { font-size: .9rem; }
+.feed-avatar { display: inline-block; animation: bob 2.6s ease-in-out infinite; }
+.feed-time { color: var(--muted); font-size: .78rem; }
+
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(14px) scale(.94); }
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-3px) rotate(6deg); }
+}
+
 .toast {
   position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%);
   background: var(--card-2); border: 1px solid #34405f; border-radius: 10px;
@@ -234,14 +312,20 @@ input:focus, select:focus { border-color: var(--accent-2); }
              calc(6px + env(safe-area-inset-bottom)) calc(6px + env(safe-area-inset-left));
   }
   .game-header { gap: 8px; }
+  .brand-box { padding: 8px 12px; }
   .word-box { font-size: 1rem; padding: 8px 12px; }
   .timer-box { padding: 8px 12px; font-size: 1.05rem; min-width: 62px; }
   .round-box { padding: 8px 10px; }
 
   .game-main { flex-direction: column; }
   /* Canvas darf schrumpfen, Seitenpanel bleibt kompakt -> alles passt ohne Scrollen */
-  .canvas-wrap { flex: 1 1 auto; }
+  .canvas-col { flex: 1 1 auto; min-height: 0; }
+  .canvas-wrap { flex: 1 1 auto; min-height: 0; }
+  .opp-box canvas { width: 96px; height: 72px; }
+  .opp-label { max-width: 96px; font-size: .7rem; }
   .side-panel { width: 100%; flex: 0 0 auto; }
+
+  .feed-list { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   .guess-feed { flex: 0 1 auto; min-height: 54px; max-height: 20vh; }
 
   .toolbar { gap: 6px; padding: 6px 8px; }

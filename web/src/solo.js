@@ -1,5 +1,5 @@
 import { pickWord } from "./words.js";
-import { requestGuess } from "./api.js";
+import { requestGuess, uploadWinStrokes } from "./api.js";
 
 const ROUND_SECONDS = 180;
 
@@ -10,8 +10,12 @@ export class SoloGame {
     this.active = false;
   }
 
-  start() {
+  // sessionId/nickname kommen aus /api/session/start (main.js) —
+  // damit landen Siege mit Name, Bild, Begriff und Zeit im öffentlichen Feed.
+  start(sessionId = null, nickname = "") {
     this.active = true;
+    this.sessionId = sessionId;
+    this.nickname = nickname;
     this.score = 0;
     this.streak = 0;
     this.usedWords = [];
@@ -33,6 +37,7 @@ export class SoloGame {
     this.ui.canvas.clear();
     this.ui.canvas.enabled = true;
     this.lastCheckedRevision = this.ui.canvas.revision;
+    this.roundStartedAt = Date.now();
 
     this.ui.startTimer(ROUND_SECONDS, () => this.onTimeout());
     this.ui.startAutoCheck(() => this.check("auto"));
@@ -55,6 +60,9 @@ export class SoloGame {
         image: this.ui.canvas.toDataUrl(),
         targetWord: this.word,
         excludeTerms: this.wrongGuesses,
+        sessionId: this.sessionId,
+        nickname: this.nickname,
+        elapsedS: Math.round((Date.now() - this.roundStartedAt) / 1000),
       });
     } catch (err) {
       this.ui.feedRemoveThinking();
@@ -71,6 +79,8 @@ export class SoloGame {
     this.ui.feedGuesses(result.guesses, result.comment);
 
     if (result.hit) {
+      // Strokes fürs animierte Feed-Replay nachreichen (nice-to-have).
+      if (result.strokeToken) uploadWinStrokes(result.strokeToken, this.ui.canvas.exportStrokes());
       this.onHit();
     } else {
       // Diese Begriffe waren falsch – beim nächsten Check nicht erneut raten.
