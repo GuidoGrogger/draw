@@ -14,8 +14,9 @@ const NEXT_ROUND_DELAY_MS = 9000;
 const MAX_PLAYERS = 8;
 const MIN_PLAYERS = 2;
 // Beim App-Wechsel auf dem Handy kappt der Browser die Verbindung — der
-// Spieler behält seinen Platz und kann innerhalb der Frist zurückkommen.
-const RESUME_GRACE_MS = 120000;
+// Spieler behält seinen Platz und kann innerhalb der Frist zurückkommen
+// (großzügig: auch wer länger in einer anderen App hängt, kommt zurück).
+const RESUME_GRACE_MS = 15 * 60000;
 const CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
 const rooms = new Map();

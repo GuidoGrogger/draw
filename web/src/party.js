@@ -81,7 +81,9 @@ export class PartyGame {
 
   _scheduleResume() {
     this.resumeAttempts++;
-    if (this.resumeAttempts > 10) {
+    // Großzügig weiterprobieren (Server hält den Platz 15 min frei);
+    // bei Rückkehr in den Tab wird der Zähler ohnehin zurückgesetzt.
+    if (this.resumeAttempts > 40) {
       this.ui.toast("Verbindung verloren — bitte neu beitreten", "bad");
       return this.quit();
     }
