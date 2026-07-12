@@ -240,7 +240,8 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px v
 .guess-item .conf { color: var(--muted); font-size: .78rem; }
 @keyframes slideIn { from { opacity: 0; transform: translateY(6px); } }
 
-#next-check { text-align: center; }
+/* Auto-Check-Countdown lebt im Raten-Button (spart eine eigene Zeile) */
+#btn-guess-now .auto-hint { font-weight: 400; font-size: .82em; opacity: .9; }
 
 .toolbar {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -325,27 +326,43 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px v
     padding: calc(6px + env(safe-area-inset-top)) calc(6px + env(safe-area-inset-right))
              calc(6px + env(safe-area-inset-bottom)) calc(6px + env(safe-area-inset-left));
   }
-  .game-header { gap: 8px; }
-  .brand-box { padding: 8px 12px; }
+  /* Deko-Kopfzeile weg; Timer/Runde kompakt und beim Scrollen oben angepinnt */
+  .brand-box { display: none; }
+  .game-header {
+    position: sticky; top: 0; z-index: 5;
+    justify-content: flex-end; gap: 6px;
+    background: var(--bg);
+    padding: 4px 0;
+    box-shadow: 0 4px 10px rgba(31, 74, 51, .08);
+  }
   .word-box { font-size: 1rem; padding: 8px 12px; }
-  .timer-box { padding: 8px 12px; font-size: 1.05rem; min-width: 62px; }
-  .round-box { padding: 8px 10px; }
+  .timer-box { padding: 6px 12px; font-size: 1rem; min-width: 58px; }
+  .round-box { padding: 6px 10px; font-size: .9rem; }
 
-  .game-main { flex-direction: column; }
-  .canvas-col { flex: none; min-height: auto; }
+  .game-main { flex-direction: column; gap: 6px; }
+  .canvas-col { flex: none; min-height: auto; gap: 6px; }
   .canvas-wrap { flex: none; min-height: auto; padding: 6px; }
   #draw-canvas { width: 100%; height: auto; max-height: none; }
   .opp-box canvas { width: 96px; height: 72px; }
   .opp-label { max-width: 96px; font-size: .7rem; }
-  .side-panel { width: 100%; flex: 0 0 auto; }
+  .side-panel { width: 100%; flex: 0 0 auto; gap: 6px; }
 
   .feed-list { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
-  .guess-feed { flex: 0 1 auto; min-height: 54px; max-height: 20vh; }
 
-  .toolbar { gap: 6px; padding: 6px 8px; }
-  .color-swatch { width: 28px; height: 28px; }
-  .size-dot { width: 32px; height: 32px; }
-  .tool { width: 34px; height: 34px; font-size: 1rem; }
+  /* Rate-Feed kompakt: ~2 Einträge sichtbar, Rest scrollt */
+  .guess-feed { flex: 0 1 auto; min-height: 40px; max-height: 116px; padding: 6px; gap: 5px; }
+  .guess-item { font-size: .82rem; padding: 6px 8px; }
+  .guess-feed-title { display: none; } /* der 🤔/💭-Kontext macht klar, was das ist */
+
+  /* Toolbar eng: kleine Knöpfe, wenig Padding */
+  .toolbar { gap: 4px; padding: 5px 6px; }
+  .colors, .sizes { gap: 4px; }
+  .color-swatch { width: 26px; height: 26px; }
+  .size-dot { width: 28px; height: 28px; }
+  .size-dot i { max-width: 16px; max-height: 16px; }
+  .tool { width: 30px; height: 30px; font-size: .9rem; }
+  #game-quit { padding: 5px 10px; font-size: .8rem; }
+  #btn-guess-now { padding: 10px 14px; }
 }
 
 /* Querformat auf dem Handy: Panel wieder neben den Canvas, schmaler */
