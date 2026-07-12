@@ -278,9 +278,27 @@ const server = http.createServer(async (req, res) => {
 // ---- WebSocket-Multiplayer-Relay ----
 const wss = new WebSocketServer({ server, path: "/ws" });
 
+// Heartbeat: In der Lobby fließen sonst keine Daten und Proxys (nginx,
+// Mobilfunk-Router) kappen idle Verbindungen nach ~60 s. Der Server pingt
+// alle 30 s (Browser antworten automatisch mit Pong) — so bleibt die
+// Verbindung beliebig lange offen und tote Clients werden erkannt.
+const HEARTBEAT_MS = 30000;
+setInterval(() => {
+  for (const ws of wss.clients) {
+    if (ws._alive === false) {
+      ws.terminate(); // löst 'close' aus → handleDisconnect räumt auf
+      continue;
+    }
+    ws._alive = false;
+    try { ws.ping(); } catch { /* Verbindung ist ohnehin hin */ }
+  }
+}, HEARTBEAT_MS);
+
 wss.on("connection", (ws) => {
   ws._joined = false;
   ws._joinAttempts = 0;
+  ws._alive = true;
+  ws.on("pong", () => { ws._alive = true; });
   ws.on("message", (raw) => {
     let msg;
     try {
