@@ -53,6 +53,20 @@ export async function requestGuess({ image, roomCode, playerId, targetWord, excl
   return res.json();
 }
 
+// Solo-Runde abgelaufen → fürs Wort in der Statistik als „nicht erraten" zählen.
+export async function reportRoundTimeout(sessionId, word) {
+  if (!sessionId) return;
+  try {
+    await fetch(API_BASE + "/api/round/timeout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId, word }),
+    });
+  } catch {
+    // Statistik ist nice-to-have — Fehler still ignorieren.
+  }
+}
+
 // Strokes der Siegerzeichnung nachreichen → animiertes Replay im Feed.
 export async function uploadWinStrokes(token, strokes) {
   try {

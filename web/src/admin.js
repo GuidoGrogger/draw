@@ -165,8 +165,26 @@ async function loadDashboard() {
     tooltipFor: (d) => `<b>${d.label}</b><br>${fmtEur(d.value)} <span>· ${d.calls} Checks</span>`,
   });
 
-  // Sessions-Tabelle
   const esc = (s) => { const d = document.createElement("div"); d.textContent = String(s ?? ""); return d.innerHTML; };
+
+  // Wort-Statistik: Erfolgsquote & Zeit bis zum Treffer pro Begriff
+  const words = o.words || [];
+  $("words-empty").classList.toggle("hidden", words.length > 0);
+  $("words-table").classList.toggle("hidden", words.length === 0);
+  $("words-table").querySelector("tbody").innerHTML = words.map((w) => `
+    <tr>
+      <td>${esc(w.word)}</td>
+      <td class="num">${w.rounds}</td>
+      <td class="num">${w.hits}</td>
+      <td><div class="rate-cell">
+        <div class="rate-bar"><i style="width:${Math.round(w.rate * 100)}%"></i></div>
+        <span class="rate-val">${Math.round(w.rate * 100)} %</span>
+      </div></td>
+      <td class="num">${w.avgS != null ? w.avgS + " s" : "–"}</td>
+      <td class="num">${w.bestS != null ? w.bestS + " s" : "–"}</td>
+    </tr>`).join("");
+
+  // Sessions-Tabelle
   $("sessions-table").querySelector("tbody").innerHTML = o.sessions.map((s) => `
     <tr>
       <td>${new Date(s.createdAt).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}</td>

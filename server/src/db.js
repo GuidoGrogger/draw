@@ -51,9 +51,19 @@ CREATE TABLE IF NOT EXISTS settings (
   k TEXT PRIMARY KEY,
   v TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS rounds (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id TEXT,
+  mode       TEXT NOT NULL,               -- 'solo' | 'multi'
+  word       TEXT NOT NULL,
+  success    INTEGER NOT NULL DEFAULT 0,  -- 1 = erraten, 0 = Zeit abgelaufen
+  duration_s INTEGER,                     -- Zeit bis zum Treffer (nur bei Erfolg)
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 CREATE INDEX IF NOT EXISTS idx_api_calls_created ON api_calls(created_at);
 CREATE INDEX IF NOT EXISTS idx_api_calls_session ON api_calls(session_id);
 CREATE INDEX IF NOT EXISTS idx_wins_created ON wins(created_at);
+CREATE INDEX IF NOT EXISTS idx_rounds_word ON rounds(word);
 `);
 
 // ---- Settings (mit Defaults) ----
@@ -220,6 +230,43 @@ function safeParse(json) {
   }
 }
 
+// ---- Runden (Wort-Statistik: Erfolgsquote & Ratedauer) ----
+const insertRoundStmt = db.prepare(
+  "INSERT INTO rounds (session_id, mode, word, success, duration_s) VALUES (?, ?, ?, ?, ?)"
+);
+const wordStatsStmt = db.prepare(
+  `SELECT word,
+          COUNT(*)                                        AS rounds,
+          SUM(success)                                    AS hits,
+          AVG(CASE WHEN success = 1 THEN duration_s END)  AS avg_s,
+          MIN(CASE WHEN success = 1 THEN duration_s END)  AS best_s
+   FROM rounds
+   GROUP BY word
+   ORDER BY rounds DESC, word
+   LIMIT 200`
+);
+
+export function recordRound({ sessionId = null, mode, word, success, durationS = null }) {
+  insertRoundStmt.run(
+    sessionId,
+    mode,
+    String(word).slice(0, 60),
+    success ? 1 : 0,
+    success && Number.isFinite(durationS) ? Math.max(0, Math.round(durationS)) : null
+  );
+}
+
+export function wordStats() {
+  return wordStatsStmt.all().map((w) => ({
+    word: w.word,
+    rounds: w.rounds,
+    hits: w.hits,
+    rate: w.rounds ? w.hits / w.rounds : 0,
+    avgS: w.avg_s != null ? Math.round(w.avg_s) : null,
+    bestS: w.best_s,
+  }));
+}
+
 // ---- Admin-Auswertungen ----
 const dailyCostStmt = db.prepare(
   `SELECT date(created_at) AS day, SUM(cost_usd) AS cost_usd, COUNT(*) AS calls
@@ -274,6 +321,7 @@ export function adminOverview() {
       wins: s.wins,
     })),
     totals: totalsStmt.get(),
+    words: wordStats(),
   };
 }
 

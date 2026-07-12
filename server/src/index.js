@@ -17,15 +17,19 @@ import { WebSocketServer } from "ws";
 
 import { guessDrawing } from "./guesser.js";
 import { anyMatch } from "./matching.js";
+import { allWords } from "../../web/src/words.js";
 import {
-  createRoom, joinRoom, handleDuelGuess, handleWsMessage, handleDisconnect,
-  roomHasPlayer, roomSessionId, getRoom,
+  createRoom, joinRoom, resumeRoom, handleDuelGuess, handleWsMessage,
+  handleDisconnect, roomHasPlayer, roomSessionId, getRoom,
 } from "./rooms.js";
 import {
-  createSession, sessionExists, recordApiCall, recordWin, attachWinStrokes,
-  getFeed, limitReached, getMonthlyLimitEur, getEurPerUsd, monthCostEur,
-  setSetting, adminOverview, DB_PATH,
+  createSession, sessionExists, recordApiCall, recordWin, recordRound,
+  attachWinStrokes, getFeed, limitReached, getMonthlyLimitEur, getEurPerUsd,
+  monthCostEur, setSetting, adminOverview, DB_PATH,
 } from "./db.js";
+
+// Für die Wort-Statistik nur echte Begriffe aus der Wortliste akzeptieren
+const KNOWN_WORDS = new Set(allWords());
 
 const PORT = parseInt(process.env.PORT || "8790", 10);
 const ADMIN_CODE = process.env.ADMIN_CODE || "";
@@ -196,6 +200,10 @@ async function handleGuess(req, res) {
       durationS: Number(body.elapsedS),
     });
     response.strokeToken = issueStrokeToken(winId);
+    // Wort-Statistik: erfolgreiche Solo-Runde
+    if (KNOWN_WORDS.has(body.targetWord)) {
+      recordRound({ sessionId, mode: "solo", word: body.targetWord, success: true, durationS: Number(body.elapsedS) });
+    }
   }
   return json(res, 200, response);
 }
@@ -216,6 +224,17 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && req.url === "/api/guess") {
       return handleGuess(req, res);
+    }
+
+    // Solo-Runde abgelaufen (Wort nicht erraten) → zählt für die
+    // Erfolgsquote in der Wort-Statistik.
+    if (req.method === "POST" && req.url === "/api/round/timeout") {
+      const body = (await readJson(req)) || {};
+      if (!sessionExists(body.sessionId) || !KNOWN_WORDS.has(body.word)) {
+        return json(res, 400, { error: "bad request" });
+      }
+      recordRound({ sessionId: body.sessionId, mode: "solo", word: body.word, success: false });
+      return json(res, 200, { ok: true });
     }
 
     if (req.method === "POST" && req.url === "/api/win/strokes") {
@@ -319,6 +338,12 @@ wss.on("connection", (ws) => {
         const before = ws._room;
         joinRoom(ws, msg.code, msg.nickname);
         if (ws._room && ws._room !== before) ws._joined = true;
+        return;
+      }
+      if (msg.type === "resume") {
+        // Wiedereinstieg nach Verbindungsabbruch (Handy: App-Wechsel)
+        if (resumeRoom(ws, msg.code, msg.playerId)) ws._joined = true;
+        else ws.close();
         return;
       }
       send(ws, { type: "error", message: "Unbekannte Aktion" });
