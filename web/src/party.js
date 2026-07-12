@@ -36,6 +36,41 @@ export class PartyGame {
     return (this.active || this.inLobby) && this.roomCode && this.playerId;
   }
 
+  // Raum + Spieler-ID überleben einen Seiten-Reload (iOS wirft die Seite
+  // nach längerem Hintergrund gern komplett weg) — so klappt der
+  // Wiedereinstieg auch dann noch.
+  _saveSession() {
+    try {
+      sessionStorage.setItem("mpSession", JSON.stringify({ code: this.roomCode, playerId: this.playerId, ts: Date.now() }));
+    } catch { /* Storage gesperrt (Private Mode) — dann eben ohne */ }
+  }
+
+  _clearSession() {
+    try { sessionStorage.removeItem("mpSession"); } catch {}
+  }
+
+  // Beim Seitenstart: gespeicherte Session wieder aufnehmen (falls vorhanden
+  // und jünger als die Server-Frist). Liefert true, wenn ein Versuch läuft.
+  resumeStored() {
+    let saved = null;
+    try { saved = JSON.parse(sessionStorage.getItem("mpSession")); } catch {}
+    if (!saved?.code || !saved?.playerId) return false;
+    if (Date.now() - (saved.ts || 0) > 15 * 60000) {
+      this._clearSession();
+      return false;
+    }
+    this.roomCode = saved.code;
+    this.playerId = saved.playerId;
+    this.inLobby = true; // optimistisch — der Server-Snapshot korrigiert den Zustand
+    this.resumeAttempts = 0;
+    this.ui.showScreen("lobby");
+    this.ui.lobbyCode(saved.code, false);
+    this.ui.lobbyStatus("Verbinde wieder mit deinem Spiel …");
+    this.ui.lobbyPlayers([], false, false);
+    this._resume();
+    return true;
+  }
+
   create(nickname) {
     this.isHost = true;
     this._connect({ type: "create", nickname });
@@ -108,6 +143,7 @@ export class PartyGame {
         this.playerId = msg.playerId;
         this.roomCode = msg.code;
         this.inLobby = true;
+        this._saveSession();
         this.ui.lobbyCode(msg.code, true);
         this.ui.lobbyStatus("Lade Freunde ein – Link teilen! Du startest das Spiel.");
         break;
@@ -116,6 +152,7 @@ export class PartyGame {
         this.playerId = msg.playerId;
         this.roomCode = msg.code;
         this.inLobby = true;
+        this._saveSession();
         this.ui.lobbyCode(msg.code, false);
         this.ui.lobbyStatus("Du bist drin! Warte, bis der Host startet …");
         break;
@@ -180,6 +217,8 @@ export class PartyGame {
   _onResumed(msg) {
     this.resumeAttempts = 0;
     this.isHost = msg.isHost;
+    this.roomCode = msg.code;
+    this._saveSession();
     this.ui.lobbyCode(msg.code, msg.isHost);
     this.ui.toast("Wieder verbunden ✅", "good");
 
@@ -216,6 +255,7 @@ export class PartyGame {
     this.solvedRound = false;
     this.roomWord = msg.word;
     this.currentRound = msg.round;
+    this._saveSession(); // Zeitstempel auffrischen (Reload-Wiedereinstieg)
     if (!preserveCanvas || !this.wrongGuesses) this.wrongGuesses = []; // falsche Begriffe dieser Runde
     this.ui.showScreen("game");
     this.ui.duelScore(false);
@@ -352,6 +392,7 @@ export class PartyGame {
     this.active = false;
     this.inLobby = false;
     this.roomCode = null;
+    this._clearSession();
     this.resumeAttempts = 0;
     clearTimeout(this.resumeTimer);
     clearTimeout(this.pongTimer);

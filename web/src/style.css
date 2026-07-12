@@ -316,7 +316,11 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px v
 .toast.good { border-color: var(--good); }
 
 @media (max-width: 760px) {
+  /* Handy: Canvas hat Vorrang — volle Breite, festes 4:3, schrumpft NIE.
+     Dafür darf der Spiel-Screen vertikal scrollen (Feed & Toolbar darunter). */
+  #screen-game { overflow-y: auto; }
   .game-layout {
+    height: auto; min-height: 100%;
     gap: 6px;
     padding: calc(6px + env(safe-area-inset-top)) calc(6px + env(safe-area-inset-right))
              calc(6px + env(safe-area-inset-bottom)) calc(6px + env(safe-area-inset-left));
@@ -328,9 +332,9 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px v
   .round-box { padding: 8px 10px; }
 
   .game-main { flex-direction: column; }
-  /* Canvas darf schrumpfen, Seitenpanel bleibt kompakt -> alles passt ohne Scrollen */
-  .canvas-col { flex: 1 1 auto; min-height: 0; }
-  .canvas-wrap { flex: 1 1 auto; min-height: 0; }
+  .canvas-col { flex: none; min-height: auto; }
+  .canvas-wrap { flex: none; min-height: auto; padding: 6px; }
+  #draw-canvas { width: 100%; height: auto; max-height: none; }
   .opp-box canvas { width: 96px; height: 72px; }
   .opp-label { max-width: 96px; font-size: .7rem; }
   .side-panel { width: 100%; flex: 0 0 auto; }
