@@ -1,16 +1,11 @@
 // Ruft Claude über das Agent SDK auf (nutzt das Plan-Kontingent via
 // CLAUDE_CODE_OAUTH_TOKEN oder alternativ ANTHROPIC_API_KEY).
-// Das Bild wird als Temp-Datei abgelegt und vom Agenten mit dem
-// Read-Tool betrachtet.
+// Das Bild geht als Content-Block direkt in die Nachricht — eine einzige
+// Modell-Runde, kein Read-Tool, keine Temp-Datei (früher Ø ~18 s pro Check).
 
 import { query } from "@anthropic-ai/claude-agent-sdk";
-import { writeFile, unlink, mkdir } from "node:fs/promises";
-import { randomUUID } from "node:crypto";
-import path from "node:path";
-import os from "node:os";
 
 const MODEL = process.env.GUESS_MODEL || "claude-haiku-4-5";
-const TMP_DIR = path.join(os.tmpdir(), "draw-guess");
 const MAX_CONCURRENT = 3;
 
 // Fallback-Kostenschätzung, falls das SDK kein total_cost_usd liefert
@@ -105,49 +100,60 @@ function excludeHint(excludeTerms) {
 async function runGuess(imageDataUrl, excludeTerms = []) {
   const m = /^data:image\/(png|jpeg);base64,(.+)$/.exec(imageDataUrl || "");
   if (!m) throw new Error("Ungültiges Bildformat");
-  const ext = m[1] === "png" ? "png" : "jpg";
-  const buf = Buffer.from(m[2], "base64");
-  if (buf.length > 2 * 1024 * 1024) throw new Error("Bild zu groß");
-
-  await mkdir(TMP_DIR, { recursive: true });
-  const file = path.join(TMP_DIR, `${randomUUID()}.${ext}`);
-  await writeFile(file, buf);
+  const mediaType = m[1] === "png" ? "image/png" : "image/jpeg";
+  const imageData = m[2];
+  if (imageData.length > 3 * 1024 * 1024) throw new Error("Bild zu groß");
 
   const startedAt = Date.now();
-  try {
-    let resultText = "";
-    let costUsd = 0;
-    const q = query({
-      prompt: `Lies die Bilddatei ${file} mit dem Read-Tool und bewerte die Zeichnung wie im Systemprompt beschrieben. Antworte nur mit dem JSON.` + excludeHint(excludeTerms),
-      options: {
-        model: MODEL,
-        maxTurns: 4,
-        allowedTools: ["Read"],
-        disallowedTools: ["Bash", "Write", "Edit", "Glob", "Grep", "WebFetch", "WebSearch", "Task"],
-        systemPrompt: SYSTEM_PROMPT,
-        cwd: TMP_DIR,
-        env: { ...process.env },
-      },
-    });
 
-    for await (const msg of q) {
-      if (msg.type === "result") {
-        // Kosten dieses Checks: das SDK meldet total_cost_usd; falls das
-        // fehlt, aus den Token-Zahlen schätzen (Haiku-4.5-Preise).
-        costUsd = Number(msg.total_cost_usd) || estimateCost(msg.usage);
-        if (msg.subtype === "success") resultText = msg.result;
-        else throw new Error("KI-Fehler: " + msg.subtype);
-      }
-    }
-    return {
-      ...parseGuessJson(resultText),
-      costUsd,
-      durationMs: Date.now() - startedAt,
-      model: MODEL,
+  // Streaming-Input-Modus: so lässt sich das Bild als Content-Block
+  // mitschicken. Genau eine User-Nachricht, dann ist der Stream zu Ende.
+  async function* promptStream() {
+    yield {
+      type: "user",
+      parent_tool_use_id: null,
+      message: {
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: mediaType, data: imageData } },
+          {
+            type: "text",
+            text: "Bewerte diese Zeichnung wie im Systemprompt beschrieben. Antworte nur mit dem JSON." + excludeHint(excludeTerms),
+          },
+        ],
+      },
     };
-  } finally {
-    unlink(file).catch(() => {});
   }
+
+  let resultText = "";
+  let costUsd = 0;
+  const q = query({
+    prompt: promptStream(),
+    options: {
+      model: MODEL,
+      maxTurns: 1, // eine Antwort, keine Tool-Runden
+      allowedTools: [],
+      disallowedTools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "WebFetch", "WebSearch", "Task"],
+      systemPrompt: SYSTEM_PROMPT,
+      env: { ...process.env },
+    },
+  });
+
+  for await (const msg of q) {
+    if (msg.type === "result") {
+      // Kosten dieses Checks: das SDK meldet total_cost_usd; falls das
+      // fehlt, aus den Token-Zahlen schätzen (Haiku-4.5-Preise).
+      costUsd = Number(msg.total_cost_usd) || estimateCost(msg.usage);
+      if (msg.subtype === "success") resultText = msg.result;
+      else throw new Error("KI-Fehler: " + msg.subtype);
+    }
+  }
+  return {
+    ...parseGuessJson(resultText),
+    costUsd,
+    durationMs: Date.now() - startedAt,
+    model: MODEL,
+  };
 }
 
 function estimateCost(usage) {

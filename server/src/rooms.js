@@ -8,7 +8,7 @@ import { randomUUID } from "node:crypto";
 import { pickWord } from "../../web/src/words.js";
 import { createSession, recordWin, recordRound, normalizeNickname } from "./db.js";
 
-const TOTAL_ROUNDS = 3;
+const TOTAL_ROUNDS = 10;
 const ROUND_SECONDS = 90;
 const NEXT_ROUND_DELAY_MS = 9000;
 const MAX_PLAYERS = 8;
