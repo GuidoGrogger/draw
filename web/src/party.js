@@ -11,6 +11,29 @@ export class PartyGame {
     this.active = false;
     this.isHost = false;
     this.strokeSender = null;
+    this.roomCode = null;
+    this.resumeAttempts = 0;
+
+    // Handy: Nach App-Wechsel/Bildschirmsperre sofort prüfen, ob die
+    // Verbindung noch lebt — sonst direkt neu verbinden.
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState !== "visible") return;
+      if (!this._inSession()) return;
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+        this.resumeAttempts = 0;
+        this._resume();
+        return;
+      }
+      // Socket meldet „offen", könnte aber tot sein → Test-Ping; kommt
+      // binnen 4 s keine Antwort, Verbindung schließen (löst Resume aus).
+      this._send({ type: "ping" });
+      clearTimeout(this.pongTimer);
+      this.pongTimer = setTimeout(() => { try { this.ws?.close(); } catch {} }, 4000);
+    });
+  }
+
+  _inSession() {
+    return (this.active || this.inLobby) && this.roomCode && this.playerId;
   }
 
   create(nickname) {
@@ -32,21 +55,45 @@ export class PartyGame {
     this.ui.lobbyStatus(firstMsg.type === "create" ? "Erstelle Raum …" : "Trete bei …");
     this.ui.lobbyPlayers([], false, false);
 
-    this.ws = new WebSocket(WS_URL);
-    this.ws.onopen = () => {
-      this.ws.send(JSON.stringify(firstMsg));
+    this._openSocket(firstMsg);
+  }
+
+  _openSocket(firstMsg) {
+    const ws = new WebSocket(WS_URL);
+    this.ws = ws;
+    ws.onopen = () => ws.send(JSON.stringify(firstMsg));
+    ws.onmessage = (ev) => {
+      clearTimeout(this.pongTimer); // jede Nachricht beweist: Verbindung lebt
+      this._onMessage(JSON.parse(ev.data));
     };
-    this.ws.onmessage = (ev) => this._onMessage(JSON.parse(ev.data));
-    this.ws.onclose = () => {
-      if (this.active || this.inLobby) {
+    // Nicht aufgeben: Verbindungsabbrüche (App-Wechsel auf dem Handy,
+    // Funkloch) automatisch per Resume überbrücken.
+    ws.onclose = () => {
+      if (this.ws !== ws) return; // schon durch neuen Socket ersetzt
+      if (this._inSession()) this._scheduleResume();
+      else if (firstMsg.type !== "resume" && (this.active || this.inLobby)) {
         this.ui.toast("Verbindung getrennt", "bad");
         this.quit();
       }
     };
-    this.ws.onerror = () => {
-      this.ui.toast("Verbindung fehlgeschlagen", "bad");
-      this.quit();
-    };
+    ws.onerror = () => { /* onclose folgt und kümmert sich */ };
+  }
+
+  _scheduleResume() {
+    this.resumeAttempts++;
+    if (this.resumeAttempts > 10) {
+      this.ui.toast("Verbindung verloren — bitte neu beitreten", "bad");
+      return this.quit();
+    }
+    if (this.resumeAttempts === 1) this.ui.toast("Verbindung unterbrochen – verbinde neu …");
+    clearTimeout(this.resumeTimer);
+    this.resumeTimer = setTimeout(() => this._resume(), Math.min(800 * this.resumeAttempts, 5000));
+  }
+
+  _resume() {
+    if (!this._inSession()) return;
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
+    this._openSocket({ type: "resume", code: this.roomCode, playerId: this.playerId });
   }
 
   _send(msg) {
@@ -57,6 +104,7 @@ export class PartyGame {
     switch (msg.type) {
       case "created":
         this.playerId = msg.playerId;
+        this.roomCode = msg.code;
         this.inLobby = true;
         this.ui.lobbyCode(msg.code, true);
         this.ui.lobbyStatus("Lade Freunde ein – Link teilen! Du startest das Spiel.");
@@ -64,10 +112,18 @@ export class PartyGame {
 
       case "joined":
         this.playerId = msg.playerId;
+        this.roomCode = msg.code;
         this.inLobby = true;
         this.ui.lobbyCode(msg.code, false);
         this.ui.lobbyStatus("Du bist drin! Warte, bis der Host startet …");
         break;
+
+      case "resumed":
+        this._onResumed(msg);
+        break;
+
+      case "pong":
+        break; // Verbindungs-Check beantwortet (Timer wurde schon gelöscht)
 
       case "lobby_update":
         this.players = msg.players;
@@ -118,18 +174,55 @@ export class PartyGame {
     }
   }
 
-  _roundStart(msg) {
+  // Wiedereinstieg gelungen: Spielzustand aus dem Server-Snapshot herstellen.
+  _onResumed(msg) {
+    this.resumeAttempts = 0;
+    this.isHost = msg.isHost;
+    this.ui.lobbyCode(msg.code, msg.isHost);
+    this.ui.toast("Wieder verbunden ✅", "good");
+
+    if (msg.state === "lobby") {
+      this.inLobby = true;
+      this.active = false;
+      this.ui.showScreen("lobby");
+      this.ui.lobbyStatus(msg.isHost
+        ? "Lade Freunde ein – Link teilen! Du startest das Spiel."
+        : "Du bist drin! Warte, bis der Host startet …");
+      this.ui.lobbyPlayers(msg.players, msg.canStart, msg.isHost, this.playerId);
+      return;
+    }
+    if (msg.state === "playing") {
+      // Gleiche Runde → eigene Zeichnung behalten; neue Runde → frisch starten
+      const sameRound = this.currentRound === msg.round && this.roomWord === msg.word;
+      this._roundStart(
+        { round: msg.round, totalRounds: msg.totalRounds, word: msg.word, duration: msg.remaining, players: msg.players },
+        { preserveCanvas: sameRound }
+      );
+      return;
+    }
+    // between/done: Rundenpause — nächste round_start/match_end kommt gleich
+    this.active = true;
+    this.inLobby = false;
+    this.ui.showScreen("game");
+    this.ui.canvas.enabled = false;
+    this.ui.toast("Nächste Runde startet gleich …");
+  }
+
+  _roundStart(msg, { preserveCanvas = false } = {}) {
     this.active = true;
     this.inLobby = false;
     this.solvedRound = false;
     this.roomWord = msg.word;
-    this.wrongGuesses = []; // schon geratene, aber falsche Begriffe dieser Runde
+    this.currentRound = msg.round;
+    if (!preserveCanvas || !this.wrongGuesses) this.wrongGuesses = []; // falsche Begriffe dieser Runde
     this.ui.showScreen("game");
     this.ui.duelScore(false);
     this.ui.roundBox(true, msg.round, msg.totalRounds);
     this.ui.setWord(msg.word);
-    this.ui.clearFeed();
-    this.ui.canvas.clear();
+    if (!preserveCanvas) {
+      this.ui.clearFeed();
+      this.ui.canvas.clear();
+    }
     this.ui.canvas.enabled = true;
     this.lastCheckedRevision = this.ui.canvas.revision;
 
@@ -256,6 +349,10 @@ export class PartyGame {
   quit() {
     this.active = false;
     this.inLobby = false;
+    this.roomCode = null;
+    this.resumeAttempts = 0;
+    clearTimeout(this.resumeTimer);
+    clearTimeout(this.pongTimer);
     this.ui.stopTimer();
     this.ui.stopAutoCheck();
     this._stopStrokeSender();

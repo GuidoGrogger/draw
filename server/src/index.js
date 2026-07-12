@@ -19,8 +19,8 @@ import { guessDrawing } from "./guesser.js";
 import { anyMatch } from "./matching.js";
 import { allWords } from "../../web/src/words.js";
 import {
-  createRoom, joinRoom, handleDuelGuess, handleWsMessage, handleDisconnect,
-  roomHasPlayer, roomSessionId, getRoom,
+  createRoom, joinRoom, resumeRoom, handleDuelGuess, handleWsMessage,
+  handleDisconnect, roomHasPlayer, roomSessionId, getRoom,
 } from "./rooms.js";
 import {
   createSession, sessionExists, recordApiCall, recordWin, recordRound,
@@ -338,6 +338,12 @@ wss.on("connection", (ws) => {
         const before = ws._room;
         joinRoom(ws, msg.code, msg.nickname);
         if (ws._room && ws._room !== before) ws._joined = true;
+        return;
+      }
+      if (msg.type === "resume") {
+        // Wiedereinstieg nach Verbindungsabbruch (Handy: App-Wechsel)
+        if (resumeRoom(ws, msg.code, msg.playerId)) ws._joined = true;
+        else ws.close();
         return;
       }
       send(ws, { type: "error", message: "Unbekannte Aktion" });

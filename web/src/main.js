@@ -298,7 +298,9 @@ function lobbyPlayers(players, canStart, isHost, myId) {
   for (const p of players) {
     const row = document.createElement("div");
     row.className = "lobby-player";
-    row.innerHTML = `<span>${p.isHost ? "👑" : "🎨"}</span> ${esc(p.nickname)}${p.id === myId ? " <span class='conf'>(du)</span>" : ""}`;
+    row.innerHTML = `<span>${p.isHost ? "👑" : "🎨"}</span> ${esc(p.nickname)}` +
+      `${p.id === myId ? " <span class='conf'>(du)</span>" : ""}` +
+      `${p.connected === false ? " <span class='conf'>💤 kurz weg …</span>" : ""}`;
     box.appendChild(row);
   }
   const startBtn = $("lobby-start");

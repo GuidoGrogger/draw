@@ -206,6 +206,7 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px v
   padding: 10px 12px;
   animation: slideIn .25s ease;
 }
+.lobby-player .conf { color: var(--muted); font-size: .78rem; }
 
 /* Ergebnis: Siegerzeichnung */
 #result-image {

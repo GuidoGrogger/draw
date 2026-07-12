@@ -13,6 +13,9 @@ const ROUND_SECONDS = 90;
 const NEXT_ROUND_DELAY_MS = 9000;
 const MAX_PLAYERS = 8;
 const MIN_PLAYERS = 2;
+// Beim App-Wechsel auf dem Handy kappt der Browser die Verbindung — der
+// Spieler behält seinen Platz und kann innerhalb der Frist zurückkommen.
+const RESUME_GRACE_MS = 120000;
 const CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
 const rooms = new Map();
@@ -45,6 +48,7 @@ function playerList(room) {
     nickname: p.nickname,
     isHost: id === room.hostId,
     score: p.score,
+    connected: p.connected !== false,
   }));
 }
 
@@ -112,6 +116,47 @@ export function joinRoom(ws, code, rawNickname) {
   ws._playerId = playerId;
   send(ws, { type: "joined", code: room.code, playerId, nickname, totalRounds: TOTAL_ROUNDS });
   lobbyUpdate(room);
+}
+
+// Wiedereinstieg nach Verbindungsabbruch (Handy: App-Wechsel/Bildschirm aus).
+// Bindet den neuen Socket an den bestehenden Spieler-Platz und schickt
+// einen Zustands-Snapshot, damit der Client nahtlos weitermachen kann.
+export function resumeRoom(ws, code, playerId) {
+  const room = getRoom(code);
+  const player = room?.players.get(playerId);
+  if (!room || !player) {
+    send(ws, { type: "error", message: "Das Spiel ist leider schon vorbei." });
+    return false;
+  }
+  if (player.ws && player.ws !== ws) {
+    // alte (tote) Verbindung ersetzen
+    player.ws._room = null;
+    try { player.ws.terminate(); } catch {}
+  }
+  clearTimeout(player.removeTimer);
+  player.removeTimer = null;
+  player.connected = true;
+  player.ws = ws;
+  ws._room = room;
+  ws._playerId = playerId;
+  send(ws, {
+    type: "resumed",
+    code: room.code,
+    playerId,
+    nickname: player.nickname,
+    isHost: playerId === room.hostId,
+    state: room.state, // lobby | playing | between | done
+    round: room.round,
+    totalRounds: TOTAL_ROUNDS,
+    word: room.state === "playing" ? room.word : null,
+    remaining: room.state === "playing"
+      ? Math.max(1, Math.round(ROUND_SECONDS - (Date.now() - room.roundStartAt) / 1000))
+      : null,
+    players: playerList(room),
+    canStart: room.players.size >= MIN_PLAYERS,
+  });
+  if (room.state === "lobby") lobbyUpdate(room);
+  return true;
 }
 
 // Nur der Host darf starten – er entscheidet, wann es losgeht.
@@ -266,18 +311,42 @@ export function handleWsMessage(ws, msg) {
       break;
     }
     case "leave":
-      handleDisconnect(ws);
+      // Explizites Verlassen (Button) → sofort entfernen, keine Frist
+      if (room) {
+        ws._room = null;
+        removePlayer(room, ws._playerId);
+      }
+      break;
+    case "ping":
+      // App-Level-Ping des Clients (Verbindungs-Check nach App-Wechsel)
+      send(ws, { type: "pong" });
       break;
   }
 }
 
+// Verbindungsabbruch: Platz RESUME_GRACE_MS lang freihalten — auf dem Handy
+// trennt der Browser beim App-Wechsel, der Spieler kommt meist gleich zurück.
 export function handleDisconnect(ws) {
   const room = ws._room;
   if (!room) return;
   ws._room = null;
+  const player = room.players.get(ws._playerId);
+  if (!player || player.ws !== ws) return; // schon per Resume ersetzt oder entfernt
+
+  player.connected = false;
+  player.ws = null;
+  clearTimeout(player.removeTimer);
   const playerId = ws._playerId;
+  player.removeTimer = setTimeout(() => removePlayer(room, playerId), RESUME_GRACE_MS);
+  if (room.state === "lobby") lobbyUpdate(room); // „kurz weg"-Anzeige
+}
+
+// Endgültig entfernen (Frist abgelaufen oder explizit verlassen).
+function removePlayer(room, playerId) {
   const leaving = room.players.get(playerId);
   if (!leaving) return;
+  clearTimeout(leaving.removeTimer);
+  if (leaving.ws) leaving.ws._room = null;
   room.players.delete(playerId);
 
   if (room.state === "lobby") {
@@ -306,6 +375,7 @@ function destroyRoom(room) {
   clearTimeout(room.timer);
   rooms.delete(room.code);
   for (const p of room.players.values()) {
+    clearTimeout(p.removeTimer);
     if (p.ws) p.ws._room = null;
   }
 }
