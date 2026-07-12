@@ -1,12 +1,22 @@
-// Ruft Claude über das Agent SDK auf (nutzt das Plan-Kontingent via
-// CLAUDE_CODE_OAUTH_TOKEN oder alternativ ANTHROPIC_API_KEY).
+// Ruft Claude auf — so schnell wie möglich:
+// 1. Bevorzugt DIREKT über die Messages-API (ein HTTP-Call, kein
+//    CLI-Subprozess). Auth: ANTHROPIC_API_KEY oder das Plan-Kontingent-
+//    OAuth-Token (Bearer + oauth-Beta-Header, wie Claude Code selbst).
+// 2. Fallback: Agent SDK (falls der Direktweg nicht erlaubt ist).
 // Das Bild geht als Content-Block direkt in die Nachricht — eine einzige
-// Modell-Runde, kein Read-Tool, keine Temp-Datei (früher Ø ~18 s pro Check).
+// Modell-Runde (der alte Temp-Datei+Read-Tool-Weg brauchte Ø ~18 s).
 
 import { query } from "@anthropic-ai/claude-agent-sdk";
 
 const MODEL = process.env.GUESS_MODEL || "claude-haiku-4-5";
 const MAX_CONCURRENT = 3;
+const API_KEY = process.env.ANTHROPIC_API_KEY || "";
+const OAUTH_TOKEN = process.env.CLAUDE_CODE_OAUTH_TOKEN || "";
+const DIRECT_URL = (process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com") + "/v1/messages";
+
+// Funktioniert der Direktweg nicht (z.B. Token nicht API-berechtigt),
+// eine Stunde lang nicht erneut probieren — der SDK-Fallback übernimmt.
+let directDisabledUntil = 0;
 
 // Fallback-Kostenschätzung, falls das SDK kein total_cost_usd liefert
 // (Haiku 4.5: $1 Input / $5 Output pro Million Tokens).
@@ -105,23 +115,79 @@ async function runGuess(imageDataUrl, excludeTerms = []) {
   if (imageData.length > 3 * 1024 * 1024) throw new Error("Bild zu groß");
 
   const startedAt = Date.now();
+  const userContent = [
+    { type: "image", source: { type: "base64", media_type: mediaType, data: imageData } },
+    {
+      type: "text",
+      text: "Bewerte diese Zeichnung wie im Systemprompt beschrieben. Antworte nur mit dem JSON." + excludeHint(excludeTerms),
+    },
+  ];
 
+  if ((API_KEY || OAUTH_TOKEN) && Date.now() > directDisabledUntil) {
+    try {
+      return await runDirect(userContent, startedAt);
+    } catch (err) {
+      if (err.status === 401 || err.status === 403) {
+        directDisabledUntil = Date.now() + 60 * 60000;
+        console.warn(`Direkt-API nicht erlaubt (${err.status}) — nutze Agent SDK (erneuter Versuch in 1 h).`);
+      } else {
+        console.warn("Direkt-API fehlgeschlagen:", err.message, "— Fallback aufs Agent SDK.");
+      }
+    }
+  }
+  return runViaSdk(userContent, startedAt);
+}
+
+// Schnellster Weg: ein einziger HTTP-Call an die Messages-API.
+async function runDirect(userContent, startedAt) {
+  const headers = {
+    "content-type": "application/json",
+    "anthropic-version": "2023-06-01",
+  };
+  if (API_KEY) {
+    headers["x-api-key"] = API_KEY;
+  } else {
+    // Plan-Kontingent-Token (claude setup-token) — derselbe Auth-Weg,
+    // den Claude Code selbst benutzt.
+    headers["authorization"] = "Bearer " + OAUTH_TOKEN;
+    headers["anthropic-beta"] = "oauth-2025-04-20";
+  }
+
+  const res = await fetch(DIRECT_URL, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: 300, // kompaktes JSON — klein halten macht die Antwort schneller
+      system: SYSTEM_PROMPT,
+      messages: [{ role: "user", content: userContent }],
+    }),
+    signal: AbortSignal.timeout(30000),
+  });
+  if (!res.ok) {
+    const err = new Error(`Messages-API ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}`);
+    err.status = res.status;
+    throw err;
+  }
+  const msg = await res.json();
+  const text = (msg.content || []).filter((b) => b.type === "text").map((b) => b.text).join("");
+  return {
+    ...parseGuessJson(text),
+    costUsd: estimateCost(msg.usage),
+    durationMs: Date.now() - startedAt,
+    model: MODEL + " (direkt)",
+  };
+}
+
+// Fallback: Agent SDK (CLI-Subprozess — langsamer, aber immer erlaubt).
+async function runViaSdk(userContent, startedAt) {
   // Streaming-Input-Modus: so lässt sich das Bild als Content-Block
   // mitschicken. Genau eine User-Nachricht, dann ist der Stream zu Ende.
   async function* promptStream() {
     yield {
       type: "user",
       parent_tool_use_id: null,
-      message: {
-        role: "user",
-        content: [
-          { type: "image", source: { type: "base64", media_type: mediaType, data: imageData } },
-          {
-            type: "text",
-            text: "Bewerte diese Zeichnung wie im Systemprompt beschrieben. Antworte nur mit dem JSON." + excludeHint(excludeTerms),
-          },
-        ],
-      },
+      message: { role: "user", content: userContent },
     };
   }
 

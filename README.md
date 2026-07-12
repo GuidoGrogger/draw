@@ -55,8 +55,9 @@ statische Frontend als auch das Backend (`/api` + `/ws`) aus.
 ## Spielablauf
 
 1. Begriff wird angezeigt, 180 s Timer (Multiplayer: 90 s).
-2. Alle 10 s geht ein Snapshot an Claude — aber nur,
-   wenn sich die Zeichnung geändert hat. Zusätzlich: „Jetzt raten!"-Button.
+2. Alle 15 s geht ein Snapshot an Claude — aber nur, wenn sich die
+   Zeichnung geändert hat. Eine Mini-Vorschau zeigt genau das Bild,
+   das Claude zuletzt gesehen hat.
 3. Claudes Vermutungen erscheinen live im Feed; im Multiplayer sieht man auch
    die Top-Guesses der anderen. Bereits geratene, falsche Begriffe merkt sich
    das Spiel und schließt sie beim nächsten Check aus.
