@@ -1,5 +1,7 @@
 // API-Client. Auf draw.grogger.de ist die API same-origin;
 // von einer anderen Herkunft (z.B. lokal) zeigt sie auf den Grogger-Server.
+// Die App ist offen (Verteilung nur per Link) — der Kostenschutz liegt
+// serverseitig im Monatslimit und Rate-Limiting.
 
 const DEFAULT_BACKEND = "https://draw.grogger.de";
 
@@ -11,21 +13,6 @@ export const API_BASE =
 export const WS_URL =
   (API_BASE ? API_BASE.replace(/^http/, "ws") : (location.protocol === "https:" ? "wss://" : "ws://") + location.host) + "/ws";
 
-export function getAccessCode() {
-  return sessionStorage.getItem("accessCode") || localStorage.getItem("accessCode") || "";
-}
-
-export function setAccessCode(code, remember) {
-  sessionStorage.setItem("accessCode", code);
-  if (remember) localStorage.setItem("accessCode", code);
-  else localStorage.removeItem("accessCode");
-}
-
-export function clearAccessCode() {
-  sessionStorage.removeItem("accessCode");
-  localStorage.removeItem("accessCode");
-}
-
 export function getNickname() {
   return localStorage.getItem("nickname") || "";
 }
@@ -35,20 +22,12 @@ export function setNickname(name) {
   else localStorage.removeItem("nickname");
 }
 
-export async function verifyAccess(code) {
-  const res = await fetch(API_BASE + "/api/verify", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Access-Code": code },
-  });
-  return res.ok;
-}
-
 // Legt eine Spielsession an (Nickname wird serverseitig gespeichert;
 // leer → anonymer Name). Liefert { sessionId, nickname }.
 export async function startSession(nickname) {
   const res = await fetch(API_BASE + "/api/session/start", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-Access-Code": getAccessCode() },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ nickname }),
   });
   if (!res.ok) throw new Error("session start failed");
@@ -60,13 +39,9 @@ export async function startSession(nickname) {
 export async function requestGuess({ image, roomCode, playerId, targetWord, excludeTerms, sessionId, nickname, elapsedS }) {
   const res = await fetch(API_BASE + "/api/guess", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Access-Code": getAccessCode(),
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ image, roomCode, playerId, targetWord, excludeTerms, sessionId, nickname, elapsedS }),
   });
-  if (res.status === 401) throw new Error("auth");
   if (res.status === 429) throw new Error("rate");
   if (res.status === 503) {
     const data = await res.json().catch(() => ({}));

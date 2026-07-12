@@ -1,9 +1,6 @@
 import { DrawCanvas, replayStrokes } from "./canvas.js";
 import { CATEGORIES } from "./words.js";
-import {
-  verifyAccess, getAccessCode, setAccessCode, clearAccessCode,
-  getNickname, setNickname, startSession, fetchFeed,
-} from "./api.js";
+import { getNickname, setNickname, startSession, fetchFeed } from "./api.js";
 import { SoloGame } from "./solo.js";
 import { PartyGame } from "./party.js";
 
@@ -14,12 +11,12 @@ const SIZES = [3, 6, 12];
 const GUESS_COOLDOWN_MS = 5000;
 
 // ---------- Screens ----------
-const screens = ["access", "menu", "invite", "lobby", "game", "result"];
+const screens = ["menu", "invite", "lobby", "game", "result"];
 function showScreen(name) {
   for (const s of screens) $("screen-" + s).classList.toggle("hidden", s !== name);
-  // Feed auf Startseite (Zugang) und im Menü unter die Karte hängen
-  if (name === "access" || name === "menu") {
-    const slot = $("screen-" + name).querySelector(".feed-slot");
+  // Feed auf der Startseite (Menü) unter die Karte hängen
+  if (name === "menu") {
+    const slot = $("screen-menu").querySelector(".feed-slot");
     if (slot && feedEl.parentElement !== slot) slot.appendChild(feedEl);
     refreshFeed();
   }
@@ -161,21 +158,19 @@ function renderTimer() {
   $("game-timer").parentElement.classList.toggle("low", timerRemaining <= 15);
 }
 
-// ---------- Auto-Check-Scheduler ----------
+// ---------- Auto-Check-Scheduler (fest alle 10 s) ----------
+const CHECK_INTERVAL_S = 10;
 let autoInterval = null;
 let nextCheckIn = 0;
-function checkIntervalSeconds() {
-  return parseInt($("setting-interval").value, 10) || 10;
-}
 function startAutoCheck(fn) {
   stopAutoCheck();
-  nextCheckIn = checkIntervalSeconds();
+  nextCheckIn = CHECK_INTERVAL_S;
   renderNextCheck();
   autoInterval = setInterval(() => {
     nextCheckIn--;
     renderNextCheck();
     if (nextCheckIn <= 0) {
-      nextCheckIn = checkIntervalSeconds();
+      nextCheckIn = CHECK_INTERVAL_S;
       fn();
     }
   }, 1000);
@@ -372,11 +367,7 @@ function renderHighscore() {
 
 // ---------- Fehlerbehandlung ----------
 function handleApiError(err) {
-  if (err.message === "auth") {
-    toast("Zugangscode ungültig – bitte neu anmelden", "bad");
-    clearAccessCode();
-    showScreen("access");
-  } else if (err.message === "rate") {
+  if (err.message === "rate") {
     toast("Zu schnell! Kurz warten …", "bad");
   } else if (err.limit) {
     toast("💶 " + err.message, "bad");
@@ -474,10 +465,6 @@ $("btn-guess-now").onclick = () => {
   }, 1000);
   currentMode?.check("manual");
 };
-$("menu-logout").onclick = () => {
-  clearAccessCode();
-  showScreen("access");
-};
 
 // ---------- Einladung per Link ----------
 function pendingInviteCode() {
@@ -499,49 +486,14 @@ function setupInvite(code) {
   };
   $("invite-decline").onclick = () => {
     history.replaceState(null, "", location.pathname);
-    showScreen("access");
+    showScreen("menu");
   };
 }
 
-// ---------- Zugang ----------
-async function submitAccess() {
-  const code = $("access-code").value.trim();
-  if (!code) return;
-  $("access-submit").disabled = true;
-  $("access-error").classList.add("hidden");
-  try {
-    const ok = await verifyAccess(code);
-    if (ok) {
-      setAccessCode(code, $("access-remember").checked);
-      renderHighscore();
-      showScreen("menu");
-    } else {
-      $("access-error").textContent = "Zugangscode falsch.";
-      $("access-error").classList.remove("hidden");
-    }
-  } catch {
-    $("access-error").textContent = "Server nicht erreichbar.";
-    $("access-error").classList.remove("hidden");
-  } finally {
-    $("access-submit").disabled = false;
-  }
-}
-$("access-submit").onclick = submitAccess;
-$("access-code").addEventListener("keydown", (e) => { if (e.key === "Enter") submitAccess(); });
-
 // ---------- Start ----------
-(async () => {
+{
+  renderHighscore();
   const invite = pendingInviteCode();
-  if (invite) {
-    // Eingeladene brauchen keinen Zugangscode — nur klicken und mitspielen.
-    setupInvite(invite);
-    return;
-  }
-  const saved = getAccessCode();
-  if (saved && (await verifyAccess(saved).catch(() => false))) {
-    renderHighscore();
-    showScreen("menu");
-  } else {
-    showScreen("access");
-  }
-})();
+  if (invite) setupInvite(invite);
+  else showScreen("menu");
+}
