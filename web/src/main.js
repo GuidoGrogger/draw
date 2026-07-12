@@ -8,7 +8,6 @@ const $ = (id) => document.getElementById(id);
 
 const COLORS = ["#111111", "#e63946", "#2a9d8f", "#1d6fd8", "#e9a820", "#8338ec", "#8d5524"];
 const SIZES = [3, 6, 12];
-const GUESS_COOLDOWN_MS = 5000;
 
 // ---------- Screens ----------
 const screens = ["menu", "invite", "lobby", "game", "result"];
@@ -158,8 +157,8 @@ function renderTimer() {
   $("game-timer").parentElement.classList.toggle("low", timerRemaining <= 15);
 }
 
-// ---------- Auto-Check-Scheduler (fest alle 10 s) ----------
-const CHECK_INTERVAL_S = 10;
+// ---------- Auto-Check-Scheduler (fest alle 15 s) ----------
+const CHECK_INTERVAL_S = 15;
 let autoInterval = null;
 let nextCheckIn = 0;
 function startAutoCheck(fn) {
@@ -186,7 +185,18 @@ function renderNextCheck() {
 
 // ---------- Guess-Feed ----------
 const feed = $("guess-feed");
-function clearFeed() { feed.innerHTML = ""; }
+function clearFeed() {
+  feed.innerHTML = "";
+  $("check-preview").classList.add("hidden"); // neue Runde → alte Vorschau weg
+}
+
+// Mini-Vorschau: genau der Snapshot, der an Claude geschickt wurde
+function setCheckPreview(dataUrl) {
+  const img = $("check-preview");
+  img.src = dataUrl;
+  img.classList.remove("hidden");
+  $("check-preview-hint").textContent = "Das hat Claude gerade gesehen";
+}
 function feedAdd(html, cls = "") {
   const div = document.createElement("div");
   div.className = "guess-item " + cls;
@@ -386,6 +396,7 @@ const ui = {
   startTimer, stopTimer,
   startAutoCheck, stopAutoCheck,
   clearFeed, feedThinking, feedRemoveThinking, feedGuesses, feedHit, feedCheat, feedOppGuess,
+  setCheckPreview,
   showResult, showReplay, showResultImage,
   saveHighscore,
   handleApiError,
@@ -454,19 +465,6 @@ $("menu-party-join").onclick = () => {
 $("lobby-start").onclick = () => party.startMatch();
 $("lobby-cancel").onclick = () => party.quit();
 $("game-quit").onclick = () => currentMode?.quit();
-$("btn-guess-now").onclick = () => {
-  const btn = $("btn-guess-now");
-  if (btn.disabled) return;
-  btn.disabled = true;
-  let left = GUESS_COOLDOWN_MS / 1000;
-  $("guess-cooldown").textContent = `(${left})`;
-  const iv = setInterval(() => {
-    left--;
-    $("guess-cooldown").textContent = left > 0 ? `(${left})` : "";
-    if (left <= 0) { clearInterval(iv); btn.disabled = false; }
-  }, 1000);
-  currentMode?.check("manual");
-};
 
 // ---------- Einladung per Link ----------
 function pendingInviteCode() {

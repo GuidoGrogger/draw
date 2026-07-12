@@ -302,11 +302,15 @@ export class PartyGame {
     if (source === "auto" && this.ui.canvas.revision === this.lastCheckedRevision) return;
     this.lastCheckedRevision = this.ui.canvas.revision;
 
+    // Genau dieser Snapshot geht an Claude — als Mini-Vorschau zeigen.
+    const image = this.ui.canvas.toDataUrl();
+    this.ui.setCheckPreview(image);
+
     this.ui.feedThinking();
     let result;
     try {
       result = await requestGuess({
-        image: this.ui.canvas.toDataUrl(),
+        image,
         roomCode: this.ui.lobbyCodeValue,
         playerId: this.playerId,
         excludeTerms: this.wrongGuesses,

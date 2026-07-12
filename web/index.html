@@ -95,8 +95,14 @@
           </div>
           <div class="guess-feed-title">🤖 Claude rät …</div>
           <div id="guess-feed" class="guess-feed"></div>
-          <button id="btn-guess-now" class="btn primary">Jetzt raten! <span id="guess-cooldown"></span>
-            <span class="auto-hint">· Auto in <span id="next-check-s">–</span> s</span></button>
+          <!-- Snapshot-Vorschau: genau das Bild, das an Claude geht -->
+          <div class="check-row">
+            <img id="check-preview" class="hidden" alt="Snapshot für Claude">
+            <div class="check-info">
+              <div class="hint">Nächster Check in <span id="next-check-s">–</span> s</div>
+              <div class="hint" id="check-preview-hint">Claude schaut alle 15 s auf deine Zeichnung</div>
+            </div>
+          </div>
         </aside>
       </div>
 

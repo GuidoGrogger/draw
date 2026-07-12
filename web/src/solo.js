@@ -53,11 +53,15 @@ export class SoloGame {
     this.lastCheckedRevision = this.ui.canvas.revision;
     this.checks++;
 
+    // Genau dieser Snapshot geht an Claude — als Mini-Vorschau zeigen.
+    const image = this.ui.canvas.toDataUrl();
+    this.ui.setCheckPreview(image);
+
     this.ui.feedThinking();
     let result;
     try {
       result = await requestGuess({
-        image: this.ui.canvas.toDataUrl(),
+        image,
         targetWord: this.word,
         excludeTerms: this.wrongGuesses,
         sessionId: this.sessionId,
