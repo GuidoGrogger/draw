@@ -22,10 +22,11 @@ statische Frontend als auch das Backend (`/api` + `/ws`) aus.
   Hinweis, dass Name und Siege öffentlich angezeigt werden können.
 - **Backend** (`server/`): Node-Service mit **SQLite** (`better-sqlite3`,
   `DB_PATH`, Standard `server/data/draw-guess.sqlite`).
-  - `POST /api/guess` legt den Canvas-Snapshot als Temp-Datei ab und lässt
-    **Claude über das Agent SDK** (Modell: Haiku 4.5, konfigurierbar) die
-    Zeichnung betrachten. So wird das **Plan-Kontingent** genutzt
-    (`CLAUDE_CODE_OAUTH_TOKEN`), alternativ ein API-Key.
+  - `POST /api/guess` schickt den Canvas-Snapshot als Bild-Content-Block
+    direkt an **Claude über das Agent SDK** (Modell: Haiku 4.5,
+    konfigurierbar) — eine einzige Modell-Runde, ohne Tools. So wird das
+    **Plan-Kontingent** genutzt (`CLAUDE_CODE_OAUTH_TOKEN`), alternativ
+    ein API-Key.
     Die **Kosten jedes Checks** (`total_cost_usd`) werden pro Session in der
     DB festgehalten.
   - **Monatslimit**: Standard **20 €/Monat** (im Admin-Backend änderbar).
@@ -49,7 +50,7 @@ statische Frontend als auch das Backend (`/api` + `/ws`) aus.
 3. **Der Host entscheidet, wann es losgeht** (Start-Button ab 2 Spielern).
 4. Alle malen **denselben Begriff**; die Zeichnungen der Mitspieler erscheinen
    live in kleinen Canvases unter dem eigenen Zeichenfeld. Wessen Zeichnung
-   Claude zuerst erkennt, gewinnt die Runde (3 Runden pro Match).
+   Claude zuerst erkennt, gewinnt die Runde (10 Runden pro Match).
 
 ## Spielablauf
 
@@ -61,7 +62,7 @@ statische Frontend als auch das Backend (`/api` + `/ws`) aus.
    das Spiel und schließt sie beim nächsten Check aus.
 4. Treffer: Solo → Punkte = Restzeit (+Bonus für Ersterkennung); der Sieg
    landet mit Bild, Begriff und Zeit im Startseiten-Feed.
-   Multiplayer → Rundensieg, Ranking nach 3 Runden.
+   Multiplayer → Rundensieg, Ranking nach 10 Runden.
 
 ## Lokal entwickeln
 
