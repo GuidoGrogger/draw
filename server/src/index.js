@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 import { WebSocketServer } from "ws";
 
 import { guessDrawing } from "./guesser.js";
-import { anyMatch } from "./matching.js";
+import { anyMatch, normalize } from "./matching.js";
 import { allWords } from "../../web/src/words.js";
 import {
   createRoom, joinRoom, resumeRoom, handleDuelGuess, handleWsMessage,
@@ -124,6 +124,19 @@ async function serveStatic(req, res) {
   }
 }
 
+// Entfernt Guesses, die (normalisiert) exakt einem bereits falsch
+// geratenen Begriff entsprechen. Gefahrlos: Diese Begriffe haben schon
+// einmal nicht zum Zielwort gepasst — sie können auch jetzt kein Treffer sein.
+function filterRepeats(guesses, excludeTerms) {
+  const excluded = new Set(
+    (Array.isArray(excludeTerms) ? excludeTerms : [])
+      .map((t) => normalize(t))
+      .filter(Boolean)
+  );
+  if (!excluded.size) return guesses;
+  return (guesses || []).filter((g) => !excluded.has(normalize(g.term)));
+}
+
 async function handleGuess(req, res) {
   const body = await readJson(req);
   if (!body) return json(res, 400, { error: "bad json" });
@@ -158,6 +171,11 @@ async function handleGuess(req, res) {
     console.error("guess failed:", err.message);
     return json(res, 502, { error: "KI-Anfrage fehlgeschlagen" });
   }
+
+  // Exakt gleiche (schon falsch geratene) Begriffe hart rausfiltern —
+  // der Prompt allein hält das Modell nicht zuverlässig davon ab.
+  // Ähnliche/verwandte Begriffe bleiben ausdrücklich erlaubt.
+  aiResult.guesses = filterRepeats(aiResult.guesses, body.excludeTerms);
 
   // Kosten dieses Checks in der DB festhalten (pro Session auswertbar).
   const sessionId = viaRoom

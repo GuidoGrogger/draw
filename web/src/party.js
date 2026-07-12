@@ -1,4 +1,4 @@
-import { requestGuess, uploadWinStrokes, WS_URL } from "./api.js";
+import { requestGuess, uploadWinStrokes, WS_URL } from "./api.js?v=3";
 
 // Multiplayer über den WebSocket-Relay: Host erstellt eine Session und teilt
 // den Einladungslink; Mitspieler treten per Klick bei (Nickname optional).

@@ -1,8 +1,8 @@
-import { DrawCanvas, replayStrokes } from "./canvas.js";
-import { CATEGORIES } from "./words.js";
-import { getNickname, setNickname, startSession, fetchFeed } from "./api.js";
-import { SoloGame } from "./solo.js";
-import { PartyGame } from "./party.js";
+import { DrawCanvas, replayStrokes } from "./canvas.js?v=3";
+import { CATEGORIES } from "./words.js?v=3";
+import { getNickname, setNickname, startSession, fetchFeed } from "./api.js?v=3";
+import { SoloGame } from "./solo.js?v=3";
+import { PartyGame } from "./party.js?v=3";
 
 const $ = (id) => document.getElementById(id);
 
