@@ -2,13 +2,16 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
+  <meta name="color-scheme" content="light">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Draw &amp; Guess – Admin</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    /* Helles, freundliches Theme mit Grün (passend zur App) */
+    /* Helles, freundliches Theme mit Grün (passend zur App).
+       "only light": verhindert Auto-Abdunkeln durch Android-Browser. */
     :root {
+      color-scheme: only light;
       --bg: #f1f7f2;
       --card: #ffffff;
       --card-2: #eef5ef;

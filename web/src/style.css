@@ -1,7 +1,10 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* Helles, freundliches Theme mit Grün */
+/* Helles, freundliches Theme mit Grün.
+   "only light" verhindert, dass Android-Browser (Chrome/Samsung "Auto-Dark")
+   die Farben eigenmächtig abdunkeln — daher wurde z.B. Gelb zu Braun. */
 :root {
+  color-scheme: only light;
   --bg: #f1f7f2;
   --card: #ffffff;
   --card-2: #eef5ef;
