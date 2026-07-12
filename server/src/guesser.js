@@ -40,6 +40,11 @@ Deine Aufgabe:
 
 Regeln für guesses: 1-3 deutsche Begriffe (einzelne Substantive oder Tätigkeiten),
 sortiert nach Wahrscheinlichkeit, confidence 0-100.
+WICHTIG: Die gesuchten Begriffe sind einfache Alltagswörter, wie man sie in einem
+Familien-Zeichenspiel malt — Tiere, Gegenstände, Natur, Essen, Aktivitäten oder
+einfache abstrakte Begriffe (z.B. Urlaub, Musik). Rate NIEMALS Fachbegriffe aus
+Biologie, Technik oder Wissenschaft (kein "Euglena", kein "Mitochondrium") —
+wenn etwas wie eine Zelle aussieht, ist es eher ein Spiegelei oder ein Auge.
 Wenn du gar nichts erkennst: leere guesses-Liste und ehrlicher Kommentar.`;
 
 // Nur wenn die KI sich sehr sicher ist, dass echter Text im Bild steht,
@@ -80,14 +85,21 @@ async function fakeGuess(hintWord) {
 }
 
 // Bereits geratene, aber falsche Begriffe für den Prompt aufbereiten.
+// Wichtig: Nur die EXAKTEN Begriffe ausschließen — verwandte oder genauere
+// Varianten bleiben erlaubt, sonst drängt die Liste die KI zu immer
+// absurderen Begriffen ("Ei" falsch → "Spiegelei" muss erlaubt bleiben).
 function excludeHint(excludeTerms) {
   const terms = (Array.isArray(excludeTerms) ? excludeTerms : [])
     .filter((t) => typeof t === "string" && t.trim())
     .map((t) => t.trim().slice(0, 60))
     .slice(0, 30);
   if (!terms.length) return "";
-  return ` Diese Begriffe wurden in vorherigen Checks schon geraten und waren FALSCH: ` +
-    `${terms.join(", ")}. Nenne sie NICHT erneut – schlage nur andere, neue Begriffe vor.`;
+  return ` Diese exakten Begriffe wurden schon geraten und waren FALSCH: ` +
+    `${terms.join(", ")}. Nenne genau diese Wörter nicht erneut. Verwandte, genauere ` +
+    `oder zusammengesetzte Begriffe sind aber ausdrücklich ERLAUBT und oft richtig ` +
+    `(war "Ei" falsch, kann "Spiegelei" die Lösung sein). Bleib bei einfachen ` +
+    `Alltagswörtern zu dem, was du im Bild siehst — weiche NICHT auf exotische ` +
+    `oder wissenschaftliche Begriffe aus, nur weil die naheliegenden schon dabei waren.`;
 }
 
 async function runGuess(imageDataUrl, excludeTerms = []) {

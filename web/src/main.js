@@ -496,6 +496,13 @@ function setupInvite(code) {
 {
   renderHighscore();
   const invite = pendingInviteCode();
-  if (invite) setupInvite(invite);
-  else showScreen("menu");
+  if (invite) {
+    setupInvite(invite);
+  } else if (party.resumeStored()) {
+    // Seite wurde neu geladen (z.B. iOS nach langem Hintergrund) —
+    // laufende Multiplayer-Session automatisch wieder aufnehmen.
+    currentMode = party;
+  } else {
+    showScreen("menu");
+  }
 }
