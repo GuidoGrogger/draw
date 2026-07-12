@@ -1,4 +1,4 @@
-import { requestGuess, uploadWinStrokes, getAccessCode, WS_URL } from "./api.js";
+import { requestGuess, uploadWinStrokes, WS_URL } from "./api.js";
 
 // Multiplayer über den WebSocket-Relay: Host erstellt eine Session und teilt
 // den Einladungslink; Mitspieler treten per Klick bei (Nickname optional).
@@ -15,7 +15,7 @@ export class PartyGame {
 
   create(nickname) {
     this.isHost = true;
-    this._connect({ type: "create", accessCode: getAccessCode(), nickname });
+    this._connect({ type: "create", nickname });
   }
 
   join(code, nickname) {

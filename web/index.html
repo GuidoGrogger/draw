@@ -9,31 +9,12 @@
 </head>
 <body>
 
-  <!-- Zugangscode + öffentlicher Feed -->
-  <div id="screen-access" class="screen scrolling">
-    <div class="screen-column">
-      <div class="card">
-        <h1>🎨 Draw &amp; Guess</h1>
-        <p class="subtitle">Male einen Begriff – Claude errät ihn.</p>
-        <label for="access-code">Zugangscode</label>
-        <input type="password" id="access-code" placeholder="Zugangscode eingeben" autocomplete="current-password">
-        <label class="checkbox-row">
-          <input type="checkbox" id="access-remember" checked>
-          <span>Im Browser merken</span>
-        </label>
-        <button id="access-submit" class="btn primary">Los geht's</button>
-        <p id="access-error" class="error hidden"></p>
-      </div>
-      <div class="feed-slot"></div>
-    </div>
-  </div>
-
-  <!-- Hauptmenü -->
+  <!-- Hauptmenü (Startseite) -->
   <div id="screen-menu" class="screen scrolling">
     <div class="screen-column">
       <div class="card">
         <h1>🎨 Draw &amp; Guess</h1>
-        <p class="subtitle">Wie willst du spielen?</p>
+        <p class="subtitle">Male einen Begriff – Claude errät ihn.</p>
         <label for="nickname">Dein Nickname (optional)</label>
         <input type="text" id="nickname" maxlength="24" placeholder="Leer = anonymer Name">
         <p class="hint privacy-hint">ℹ️ Dein Name und gewonnene Runden (Zeichnung, Begriff, Zeit)
@@ -45,19 +26,12 @@
           <button id="menu-party-join" class="btn">Beitreten</button>
         </div>
         <div class="settings-row">
-          <label for="setting-interval">KI-Check alle</label>
-          <select id="setting-interval">
-            <option value="10" selected>10 s</option>
-            <option value="20">20 s</option>
-            <option value="30">30 s</option>
-          </select>
           <label for="setting-category">Kategorie</label>
           <select id="setting-category">
             <option value="alle" selected>Alle</option>
           </select>
         </div>
         <p class="hint" id="menu-highscore"></p>
-        <button id="menu-logout" class="btn small ghost">Zugangscode ändern</button>
       </div>
       <div class="feed-slot"></div>
     </div>

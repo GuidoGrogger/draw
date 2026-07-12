@@ -1,5 +1,5 @@
-// Draw & Guess Backend
-// - POST /api/verify        : Zugangscode prüfen
+// Draw & Guess Backend — die App ist offen (Verteilung nur per Link an
+// Freunde); der Kostenschutz liegt im Monatslimit + Rate-Limiting.
 // - POST /api/session/start : Spielsession anlegen (Nickname → DB)
 // - POST /api/guess         : Canvas-Bild an Claude → Guesses + Fraud-Check (+ Kosten in DB)
 // - POST /api/win/strokes   : Strokes einer Siegerzeichnung nachreichen (animierter Feed)
@@ -28,14 +28,9 @@ import {
 } from "./db.js";
 
 const PORT = parseInt(process.env.PORT || "8790", 10);
-const ACCESS_CODE = process.env.ACCESS_CODE || "";
 const ADMIN_CODE = process.env.ADMIN_CODE || "";
 const WEB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../web");
 
-if (!ACCESS_CODE) {
-  console.error("FEHLER: ACCESS_CODE ist nicht gesetzt (Env). Server startet nicht.");
-  process.exit(1);
-}
 if (!ADMIN_CODE) {
   console.warn("WARNUNG: ADMIN_CODE ist nicht gesetzt — das Admin-Backend ist deaktiviert.");
 }
@@ -66,17 +61,13 @@ setInterval(() => {
 function cors(res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Access-Code, X-Admin-Code");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Admin-Code");
 }
 
 function json(res, status, obj) {
   cors(res);
   res.writeHead(status, { "Content-Type": "application/json" });
   res.end(JSON.stringify(obj));
-}
-
-function authorized(req) {
-  return (req.headers["x-access-code"] || "") === ACCESS_CODE;
 }
 
 function adminAuthorized(req) {
@@ -133,10 +124,9 @@ async function handleGuess(req, res) {
   const body = await readJson(req);
   if (!body) return json(res, 400, { error: "bad json" });
 
-  // Auth: Zugangscode ODER gültige Mitgliedschaft in einem Multiplayer-Raum
-  // (Eingeladene haben keinen Zugangscode — sie sind über den Raum legitimiert).
+  // Multiplayer-Guesses werden über die Raum-Mitgliedschaft dem Raum
+  // zugeordnet (playerId ist eine server-vergebene UUID).
   const viaRoom = body.roomCode && body.playerId && roomHasPlayer(body.roomCode, body.playerId);
-  if (!authorized(req) && !viaRoom) return json(res, 401, { error: "unauthorized" });
 
   const key = viaRoom
     ? "p:" + body.playerId
@@ -218,12 +208,7 @@ const server = http.createServer(async (req, res) => {
       return res.end();
     }
 
-    if (req.method === "POST" && req.url === "/api/verify") {
-      return json(res, authorized(req) ? 200 : 401, { ok: authorized(req) });
-    }
-
     if (req.method === "POST" && req.url === "/api/session/start") {
-      if (!authorized(req)) return json(res, 401, { error: "unauthorized" });
       const body = (await readJson(req)) || {};
       const session = createSession("solo", body.nickname);
       return json(res, 200, { sessionId: session.id, nickname: session.nickname });
@@ -304,13 +289,9 @@ wss.on("connection", (ws) => {
       return;
     }
     if (!ws._joined) {
-      // Erstellen erfordert den Zugangscode; Beitreten nur den Raumcode
-      // (Einladungslink → einfach klicken und mitmachen).
+      // Erstellen und Beitreten sind offen (Einladungslink → einfach
+      // klicken und mitmachen); Kostenschutz = Monatslimit + Rate-Limits.
       if (msg.type === "create") {
-        if (msg.accessCode !== ACCESS_CODE) {
-          send(ws, { type: "error", message: "Zugangscode ungültig" });
-          return ws.close();
-        }
         ws._joined = true;
         return createRoom(ws, msg.nickname);
       }

@@ -71,7 +71,7 @@ export function roomSessionId(code) {
   return getRoom(code)?.sessionId || null;
 }
 
-// Host erstellt den Raum. Der Zugangscode wurde vorher in index.js geprüft.
+// Host erstellt den Raum.
 export function createRoom(ws, rawNickname) {
   const code = makeCode();
   const playerId = randomUUID();
@@ -98,8 +98,7 @@ export function createRoom(ws, rawNickname) {
   return room;
 }
 
-// Beitritt per Einladungslink oder Code — bewusst OHNE Zugangscode,
-// damit Eingeladene nur klicken müssen.
+// Beitritt per Einladungslink oder Code — Eingeladene müssen nur klicken.
 export function joinRoom(ws, code, rawNickname) {
   const room = getRoom(code);
   if (!room) return send(ws, { type: "error", message: "Raum nicht gefunden – Link abgelaufen?" });
