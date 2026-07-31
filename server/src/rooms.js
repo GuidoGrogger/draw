@@ -7,6 +7,7 @@
 import { randomUUID } from "node:crypto";
 import { pickWord } from "../../web/src/words.js";
 import { createSession, recordWin, recordRound, normalizeNickname } from "./db.js";
+import { sanitizeStrokes } from "./strokes.js";
 
 const TOTAL_ROUNDS = 10;
 const ROUND_SECONDS = 90;
@@ -29,7 +30,7 @@ function makeCode() {
   return code;
 }
 
-function send(ws, msg) {
+export function send(ws, msg) {
   if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg));
 }
 
@@ -299,14 +300,16 @@ export function handleWsMessage(ws, msg) {
       startMatch(ws);
       break;
     case "strokes": {
-      // Live-Zeichnung an alle Mitspieler weiterreichen. Größe begrenzen.
+      // Live-Zeichnung an alle Mitspieler weiterreichen — vorher validieren
+      // und in der Größe begrenzen (sonst crashen manipulierte Daten das
+      // Rendering der anderen Clients).
       if (!room || room.state !== "playing") return;
-      const raw = JSON.stringify(msg.strokes || []);
-      if (raw.length > 300000) return;
+      const strokes = sanitizeStrokes(msg.strokes);
+      if (!strokes || JSON.stringify(strokes).length > 300000) return;
       const nickname = room.players.get(ws._playerId)?.nickname;
       for (const [id, p] of room.players) {
         if (id !== ws._playerId) {
-          send(p.ws, { type: "opp_strokes", playerId: ws._playerId, nickname, strokes: msg.strokes });
+          send(p.ws, { type: "opp_strokes", playerId: ws._playerId, nickname, strokes });
         }
       }
       break;

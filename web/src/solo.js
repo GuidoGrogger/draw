@@ -1,5 +1,6 @@
-import { pickWord } from "./words.js?v=3";
-import { requestGuess, uploadWinStrokes, reportRoundTimeout } from "./api.js?v=3";
+import { pickWord } from "./words.js?v=4";
+import { requestGuess, uploadWinStrokes, reportRoundTimeout } from "./api.js?v=4";
+import { rememberWrong } from "./util.js?v=4";
 
 const ROUND_SECONDS = 180;
 
@@ -88,16 +89,7 @@ export class SoloGame {
       this.onHit();
     } else {
       // Diese Begriffe waren falsch – beim nächsten Check nicht erneut raten.
-      this.rememberWrong(result.guesses);
-    }
-  }
-
-  rememberWrong(guesses) {
-    for (const g of guesses || []) {
-      const term = g?.term?.trim();
-      if (!term) continue;
-      const known = this.wrongGuesses.some((w) => w.toLowerCase() === term.toLowerCase());
-      if (!known) this.wrongGuesses.push(term);
+      rememberWrong(this.wrongGuesses, result.guesses);
     }
   }
 

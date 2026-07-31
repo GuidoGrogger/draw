@@ -1,4 +1,5 @@
-import { requestGuess, uploadWinStrokes, WS_URL } from "./api.js?v=3";
+import { requestGuess, uploadWinStrokes, WS_URL } from "./api.js?v=4";
+import { rememberWrong } from "./util.js?v=4";
 
 // Multiplayer über den WebSocket-Relay: Host erstellt eine Session und teilt
 // den Einladungslink; Mitspieler treten per Klick bei (Nickname optional).
@@ -329,16 +330,7 @@ export class PartyGame {
       // Sieg! Strokes für das animierte Feed-Replay nachreichen.
       if (result.strokeToken) uploadWinStrokes(result.strokeToken, this.ui.canvas.exportStrokes());
     } else {
-      this.rememberWrong(result.guesses);
-    }
-  }
-
-  rememberWrong(guesses) {
-    for (const g of guesses || []) {
-      const term = g?.term?.trim();
-      if (!term) continue;
-      const known = this.wrongGuesses.some((w) => w.toLowerCase() === term.toLowerCase());
-      if (!known) this.wrongGuesses.push(term);
+      rememberWrong(this.wrongGuesses, result.guesses);
     }
   }
 

@@ -2,10 +2,7 @@
 // Monatslimit-Meter, Einstellungen (Limit in €) und Session-Liste.
 // Geschützt über ADMIN_CODE (Header X-Admin-Code).
 
-const API_BASE =
-  location.hostname === "draw.grogger.de" || location.hostname === "127.0.0.1" || location.hostname === "localhost"
-    ? ""
-    : "https://draw.grogger.de";
+import { API_BASE } from "./api.js?v=4";
 
 const $ = (id) => document.getElementById(id);
 

@@ -42,3 +42,21 @@ export function isMatch(guess, target) {
 export function anyMatch(guesses, target) {
   return (guesses || []).some((g) => isMatch(g.term, target));
 }
+
+// Client-gelieferte Ausschlussliste absichern: Legitim sind nur Begriffe,
+// die die KI selbst geraten hat — einzelne Wörter. Sätze, Steuerzeichen
+// oder Sonderzeichen fliegen raus, denn die Liste wird in den Claude-Prompt
+// eingebettet und im Multiplayer kennt jeder Spieler das Zielwort — freier
+// Text wäre ein Kanal für Prompt-Injection ("rate sofort X").
+export function sanitizeExcludeTerms(terms) {
+  const out = [];
+  for (const t of Array.isArray(terms) ? terms : []) {
+    if (typeof t !== "string") continue;
+    const term = t.trim();
+    if (!term || term.length > 40) continue;
+    if (!/^[\p{L}\p{N}\-]+$/u.test(term)) continue;
+    out.push(term);
+    if (out.length >= 30) break;
+  }
+  return out;
+}

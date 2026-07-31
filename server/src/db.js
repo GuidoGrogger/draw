@@ -189,6 +189,11 @@ const feedStmt = db.prepare(
    FROM wins ORDER BY created_at DESC, rowid DESC LIMIT ?`
 );
 
+// Nur echte PNG/JPEG-Daten-URLs akzeptieren; Übergröße ablehnen statt
+// abzuschneiden (ein truncatetes Base64-Bild wäre ohnehin kaputt).
+const WIN_IMAGE_RE = /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/;
+const WIN_IMAGE_MAX = 200000;
+
 export function recordWin({ sessionId = null, nickname, mode, word, image = null, durationS = null }) {
   const id = randomUUID();
   insertWinStmt.run(
@@ -197,7 +202,7 @@ export function recordWin({ sessionId = null, nickname, mode, word, image = null
     normalizeNickname(nickname),
     mode,
     String(word).slice(0, 60),
-    typeof image === "string" && image.startsWith("data:image/") ? image.slice(0, 200000) : null,
+    typeof image === "string" && image.length <= WIN_IMAGE_MAX && WIN_IMAGE_RE.test(image) ? image : null,
     Number.isFinite(durationS) ? Math.max(0, Math.round(durationS)) : null
   );
   return id;

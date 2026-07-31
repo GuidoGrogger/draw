@@ -1,10 +1,17 @@
-import { DrawCanvas, replayStrokes } from "./canvas.js?v=3";
-import { CATEGORIES } from "./words.js?v=3";
-import { getNickname, setNickname, startSession, fetchFeed } from "./api.js?v=3";
-import { SoloGame } from "./solo.js?v=3";
-import { PartyGame } from "./party.js?v=3";
+import { DrawCanvas, replayStrokes } from "./canvas.js?v=4";
+import { CATEGORIES } from "./words.js?v=4";
+import { getNickname, setNickname, startSession, fetchFeed } from "./api.js?v=4";
+import { SoloGame } from "./solo.js?v=4";
+import { PartyGame } from "./party.js?v=4";
 
 const $ = (id) => document.getElementById(id);
+
+// HTML-Escape für alles, was per innerHTML gerendert wird (Nicknames, Begriffe …).
+function esc(s) {
+  const d = document.createElement("div");
+  d.textContent = String(s ?? "");
+  return d.innerHTML;
+}
 
 const COLORS = ["#111111", "#e63946", "#2a9d8f", "#1d6fd8", "#e9a820", "#8338ec", "#8d5524"];
 const SIZES = [3, 6, 12];
@@ -81,7 +88,6 @@ async function refreshFeed(force = false) {
 
     const meta = document.createElement("div");
     meta.className = "feed-meta";
-    const esc = (s) => { const d = document.createElement("div"); d.textContent = String(s ?? ""); return d.innerHTML; };
     meta.innerHTML =
       `<div class="feed-word">„${esc(w.word)}"</div>` +
       `<div class="feed-player"><span class="feed-avatar">${w.mode === "multi" ? "🎉" : "🖌️"}</span> ${esc(w.nickname)}</div>` +
@@ -213,11 +219,6 @@ function feedThinking() {
 function feedRemoveThinking() {
   thinkingEl?.remove();
   thinkingEl = null;
-}
-function esc(s) {
-  const d = document.createElement("div");
-  d.textContent = String(s ?? "");
-  return d.innerHTML;
 }
 function feedGuesses(guesses, comment) {
   if (!guesses?.length) {
