@@ -11,16 +11,17 @@
 import http from "node:http";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash, timingSafeEqual } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer } from "ws";
 
 import { guessDrawing } from "./guesser.js";
-import { anyMatch, normalize } from "./matching.js";
+import { anyMatch, normalize, sanitizeExcludeTerms } from "./matching.js";
+import { sanitizeStrokes } from "./strokes.js";
 import { allWords } from "../../web/src/words.js";
 import {
   createRoom, joinRoom, resumeRoom, handleDuelGuess, handleWsMessage,
-  handleDisconnect, roomHasPlayer, roomSessionId, getRoom,
+  handleDisconnect, roomHasPlayer, roomSessionId, getRoom, send,
 } from "./rooms.js";
 import {
   createSession, sessionExists, recordApiCall, recordWin, recordRound,
@@ -42,13 +43,23 @@ if (!process.env.CLAUDE_CODE_OAUTH_TOKEN && !process.env.ANTHROPIC_API_KEY && pr
   console.warn("WARNUNG: Weder CLAUDE_CODE_OAUTH_TOKEN noch ANTHROPIC_API_KEY gesetzt — /api/guess wird fehlschlagen.");
 }
 
+// Hinter nginx ist req.socket.remoteAddress immer 127.0.0.1. nginx hängt
+// die echte Client-IP als LETZTEN Eintrag an X-Forwarded-For an — vom
+// Client selbst mitgeschickte (beliebig fälschbare) Einträge stehen davor
+// und werden ignoriert, sonst ließe sich jedes Rate-Limit umgehen.
+function clientIp(req) {
+  const xff = String(req.headers["x-forwarded-for"] || "");
+  const last = xff.split(",").pop().trim();
+  return last || req.socket.remoteAddress || "unknown";
+}
+
 // ---- Rate-Limiting: pro Client min. Abstand zwischen KI-Checks ----
 const lastGuessAt = new Map(); // key -> timestamp
 const MIN_GUESS_INTERVAL_MS = 4000;
-setInterval(() => {
-  const cutoff = Date.now() - 10 * 60000;
-  for (const [k, t] of lastGuessAt) if (t < cutoff) lastGuessAt.delete(k);
-}, 60000);
+
+// ---- Rate-Limiting: Session-Anlage (sonst DB-Spam) ----
+const lastSessionStartAt = new Map(); // ip -> timestamp
+const MIN_SESSION_INTERVAL_MS = 2000;
 
 // ---- Stroke-Tokens: nur der Gewinner darf seine Strokes nachreichen ----
 const strokeTokens = new Map(); // token -> { winId, expires }
@@ -57,9 +68,20 @@ function issueStrokeToken(winId) {
   strokeTokens.set(token, { winId, expires: Date.now() + 5 * 60000 });
   return token;
 }
+
+// ---- Brute-Force-Schutz fürs Admin-Backend ----
+const adminFailures = new Map(); // ip -> { count, until }
+const ADMIN_MAX_FAILURES = 10;
+const ADMIN_LOCK_MS = 15 * 60000;
+
+// Ein gemeinsamer Aufräum-Tick für alle In-Memory-Maps.
 setInterval(() => {
   const now = Date.now();
+  const cutoff = now - 10 * 60000;
+  for (const [k, t] of lastGuessAt) if (t < cutoff) lastGuessAt.delete(k);
+  for (const [k, t] of lastSessionStartAt) if (t < cutoff) lastSessionStartAt.delete(k);
   for (const [t, v] of strokeTokens) if (v.expires < now) strokeTokens.delete(t);
+  for (const [ip, f] of adminFailures) if (f.until < now) adminFailures.delete(ip);
 }, 60000);
 
 function cors(res) {
@@ -74,8 +96,15 @@ function json(res, status, obj) {
   res.end(JSON.stringify(obj));
 }
 
+// Timing-sicherer Vergleich (über Hashes, damit auch die Länge nichts verrät).
+function safeEqual(a, b) {
+  const ha = createHash("sha256").update(String(a)).digest();
+  const hb = createHash("sha256").update(String(b)).digest();
+  return timingSafeEqual(ha, hb);
+}
+
 function adminAuthorized(req) {
-  return Boolean(ADMIN_CODE) && (req.headers["x-admin-code"] || "") === ADMIN_CODE;
+  return Boolean(ADMIN_CODE) && safeEqual(req.headers["x-admin-code"] || "", ADMIN_CODE);
 }
 
 async function readBody(req, limit = 2.5 * 1024 * 1024) {
@@ -110,11 +139,21 @@ const MIME = {
 };
 
 async function serveStatic(req, res) {
-  let p = decodeURIComponent(new URL(req.url, "http://x").pathname);
+  let p;
+  try {
+    p = decodeURIComponent(new URL(req.url, "http://x").pathname);
+  } catch {
+    return json(res, 400, { error: "bad path" });
+  }
+  if (p.includes("\0")) return json(res, 400, { error: "bad path" });
   if (p === "/") p = "/index.html";
   if (p === "/admin") p = "/admin.html";
   const file = path.resolve(WEB_DIR, "." + p);
-  if (!file.startsWith(WEB_DIR)) return json(res, 403, { error: "forbidden" });
+  // Prefix-Check MIT Separator — sonst wäre ein Nachbarordner wie
+  // "…/webfoo" ebenfalls erlaubt.
+  if (file !== WEB_DIR && !file.startsWith(WEB_DIR + path.sep)) {
+    return json(res, 403, { error: "forbidden" });
+  }
   try {
     const data = await readFile(file);
     res.writeHead(200, { "Content-Type": MIME[path.extname(file)] || "application/octet-stream" });
@@ -140,14 +179,22 @@ function filterRepeats(guesses, excludeTerms) {
 async function handleGuess(req, res) {
   const body = await readJson(req);
   if (!body) return json(res, 400, { error: "bad json" });
+  if (typeof body.image !== "string" || !/^data:image\/(png|jpeg);base64,/.test(body.image)) {
+    return json(res, 400, { error: "bad image" });
+  }
+
+  // Client-gelieferte Ausschlussliste absichern (Prompt-Injection-Kanal).
+  const excludeTerms = sanitizeExcludeTerms(body.excludeTerms);
 
   // Multiplayer-Guesses werden über die Raum-Mitgliedschaft dem Raum
   // zugeordnet (playerId ist eine server-vergebene UUID).
   const viaRoom = body.roomCode && body.playerId && roomHasPlayer(body.roomCode, body.playerId);
+  const soloSessionId = !viaRoom && sessionExists(body.sessionId) ? body.sessionId : null;
 
-  const key = viaRoom
-    ? "p:" + body.playerId
-    : "c:" + (req.socket.remoteAddress || "") + ":" + (req.headers["x-forwarded-for"] || "");
+  // Rate-Limit-Key: server-vergebene IDs, sonst die echte Client-IP.
+  const key = viaRoom ? "p:" + body.playerId
+    : soloSessionId ? "s:" + soloSessionId
+    : "c:" + clientIp(req);
   const last = lastGuessAt.get(key) || 0;
   if (Date.now() - last < MIN_GUESS_INTERVAL_MS) return json(res, 429, { error: "rate" });
   lastGuessAt.set(key, Date.now());
@@ -165,7 +212,7 @@ async function handleGuess(req, res) {
 
   let aiResult;
   try {
-    aiResult = await guessDrawing(body.image, body.excludeTerms, hintWord);
+    aiResult = await guessDrawing(body.image, excludeTerms, hintWord);
   } catch (err) {
     if (err.code === "BUSY") return json(res, 429, { error: "busy" });
     console.error("guess failed:", err.message);
@@ -175,12 +222,10 @@ async function handleGuess(req, res) {
   // Exakt gleiche (schon falsch geratene) Begriffe hart rausfiltern —
   // der Prompt allein hält das Modell nicht zuverlässig davon ab.
   // Ähnliche/verwandte Begriffe bleiben ausdrücklich erlaubt.
-  aiResult.guesses = filterRepeats(aiResult.guesses, body.excludeTerms);
+  aiResult.guesses = filterRepeats(aiResult.guesses, excludeTerms);
 
   // Kosten dieses Checks in der DB festhalten (pro Session auswertbar).
-  const sessionId = viaRoom
-    ? roomSessionId(body.roomCode)
-    : (sessionExists(body.sessionId) ? body.sessionId : null);
+  const sessionId = viaRoom ? roomSessionId(body.roomCode) : soloSessionId;
   recordApiCall({
     sessionId,
     model: aiResult.model,
@@ -207,8 +252,10 @@ async function handleGuess(req, res) {
     disqualified,
   };
 
-  // Treffer im Feed festhalten (Bild, Begriff, Zeit, Nickname der Session)
-  if (hit && sessionId) {
+  // Treffer im Feed festhalten (Bild, Begriff, Zeit, Nickname der Session).
+  // Nur echte Begriffe aus der Wortliste — targetWord kommt vom Client und
+  // landet sonst als beliebiger Text im öffentlichen Feed.
+  if (hit && sessionId && KNOWN_WORDS.has(body.targetWord)) {
     const winId = recordWin({
       sessionId,
       nickname: body.nickname,
@@ -219,9 +266,7 @@ async function handleGuess(req, res) {
     });
     response.strokeToken = issueStrokeToken(winId);
     // Wort-Statistik: erfolgreiche Solo-Runde
-    if (KNOWN_WORDS.has(body.targetWord)) {
-      recordRound({ sessionId, mode: "solo", word: body.targetWord, success: true, durationS: Number(body.elapsedS) });
-    }
+    recordRound({ sessionId, mode: "solo", word: body.targetWord, success: true, durationS: Number(body.elapsedS) });
   }
   return json(res, 200, response);
 }
@@ -235,6 +280,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "POST" && req.url === "/api/session/start") {
+      const ip = clientIp(req);
+      const last = lastSessionStartAt.get(ip) || 0;
+      if (Date.now() - last < MIN_SESSION_INTERVAL_MS) return json(res, 429, { error: "rate" });
+      lastSessionStartAt.set(ip, Date.now());
       const body = (await readJson(req)) || {};
       const session = createSession("solo", body.nickname);
       return json(res, 200, { sessionId: session.id, nickname: session.nickname });
@@ -257,11 +306,15 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && req.url === "/api/win/strokes") {
       const body = await readJson(req);
-      if (!body || !body.token || !Array.isArray(body.strokes)) return json(res, 400, { error: "bad request" });
+      if (!body || !body.token) return json(res, 400, { error: "bad request" });
+      // Strukturell validieren — die Strokes werden später an alle
+      // Feed-Besucher ausgeliefert und dort gerendert.
+      const strokes = sanitizeStrokes(body.strokes);
+      if (!strokes) return json(res, 400, { error: "bad request" });
       const entry = strokeTokens.get(body.token);
       if (!entry || entry.expires < Date.now()) return json(res, 403, { error: "invalid token" });
       strokeTokens.delete(body.token);
-      const ok = attachWinStrokes(entry.winId, body.strokes);
+      const ok = attachWinStrokes(entry.winId, strokes);
       return json(res, ok ? 200 : 400, { ok });
     }
 
@@ -272,7 +325,16 @@ const server = http.createServer(async (req, res) => {
     // ---- Admin-Backend (geschützt über ADMIN_CODE) ----
     if (req.url.startsWith("/api/admin/")) {
       if (!ADMIN_CODE) return json(res, 503, { error: "Admin-Backend nicht konfiguriert (ADMIN_CODE fehlt)" });
-      if (!adminAuthorized(req)) return json(res, 401, { error: "unauthorized" });
+      const ip = clientIp(req);
+      const fail = adminFailures.get(ip);
+      if (fail && fail.count >= ADMIN_MAX_FAILURES && Date.now() < fail.until) {
+        return json(res, 429, { error: "Zu viele Fehlversuche — später erneut probieren." });
+      }
+      if (!adminAuthorized(req)) {
+        adminFailures.set(ip, { count: (fail?.count || 0) + 1, until: Date.now() + ADMIN_LOCK_MS });
+        return json(res, 401, { error: "unauthorized" });
+      }
+      adminFailures.delete(ip);
 
       if (req.method === "POST" && req.url === "/api/admin/verify") {
         return json(res, 200, { ok: true });
@@ -313,7 +375,9 @@ const server = http.createServer(async (req, res) => {
 });
 
 // ---- WebSocket-Multiplayer-Relay ----
-const wss = new WebSocketServer({ server, path: "/ws" });
+// maxPayload begrenzen — der ws-Default (100 MiB) wäre ein Speicher-DoS;
+// die größte legitime Nachricht (Strokes) ist auf 300 kB begrenzt.
+const wss = new WebSocketServer({ server, path: "/ws", maxPayload: 600 * 1024 });
 
 // Heartbeat: In der Lobby fließen sonst keine Daten und Proxys (nginx,
 // Mobilfunk-Router) kappen idle Verbindungen nach ~60 s. Der Server pingt
@@ -372,10 +436,6 @@ wss.on("connection", (ws) => {
   ws.on("close", () => handleDisconnect(ws));
   ws.on("error", () => handleDisconnect(ws));
 });
-
-function send(ws, msg) {
-  if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg));
-}
 
 server.listen(PORT, "127.0.0.1", () => {
   console.log(`Draw & Guess Server läuft auf http://127.0.0.1:${PORT}`);
