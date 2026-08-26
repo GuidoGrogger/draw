@@ -77,5 +77,16 @@ ADMIN_CODE=admin FAKE_GUESSER=1 FAKE_ALWAYS_HIT=1 node src/index.js
 ```
 
 Env-Variablen: `ADMIN_CODE` (Admin-Backend), `CLAUDE_CODE_OAUTH_TOKEN` /
-`ANTHROPIC_API_KEY`, `GUESS_MODEL`, `PORT`, `DB_PATH`,
+`ANTHROPIC_API_KEY`, `GUESS_MODEL`, `PORT`, `DB_PATH`, `BIND_ADDR`
+(Default `127.0.0.1`; im Container `0.0.0.0`),
 `FAKE_GUESSER` / `FAKE_ALWAYS_HIT` (nur Dev).
+
+Alternativ als Container (`Dockerfile` im Repo-Root):
+
+```bash
+docker build -t draw-guess .
+docker run --rm -p 8790:8790 -e FAKE_GUESSER=1 draw-guess
+```
+
+In Produktion läuft genau dieses Image; die Betriebs-Konfiguration (Server,
+nginx, Deploy-Weg) liegt bewusst nicht in diesem öffentlichen Repo.
