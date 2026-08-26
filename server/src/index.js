@@ -437,7 +437,10 @@ wss.on("connection", (ws) => {
   ws.on("error", () => handleDisconnect(ws));
 });
 
-server.listen(PORT, "127.0.0.1", () => {
-  console.log(`Draw & Guess Server läuft auf http://127.0.0.1:${PORT}`);
+// Default bleibt 127.0.0.1 (hinter nginx auf dem Host); im Container muss
+// der Prozess auf 0.0.0.0 hören, sonst erreicht ihn das Port-Mapping nicht.
+const BIND_ADDR = process.env.BIND_ADDR || "127.0.0.1";
+server.listen(PORT, BIND_ADDR, () => {
+  console.log(`Draw & Guess Server läuft auf http://${BIND_ADDR}:${PORT}`);
   console.log(`Datenbank: ${DB_PATH}`);
 });
