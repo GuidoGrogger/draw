@@ -18,6 +18,7 @@ import { WebSocketServer } from "ws";
 import { guessDrawing } from "./guesser.js";
 import { anyMatch, normalize, sanitizeExcludeTerms } from "./matching.js";
 import { sanitizeStrokes } from "./strokes.js";
+import { handleMonitoring } from "./monitoring.js";
 import { allWords } from "../../web/src/words.js";
 import {
   createRoom, joinRoom, resumeRoom, handleDuelGuess, handleWsMessage,
@@ -321,6 +322,9 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && req.url.startsWith("/api/feed")) {
       return json(res, 200, { wins: getFeed(12) });
     }
+
+    // ---- Monitoring (eigener Token MONITORING_TOKEN, nicht ADMIN_CODE) ----
+    if (handleMonitoring(req, res, clientIp(req))) return;
 
     // ---- Admin-Backend (geschützt über ADMIN_CODE) ----
     if (req.url.startsWith("/api/admin/")) {

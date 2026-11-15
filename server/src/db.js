@@ -331,3 +331,28 @@ export function adminOverview() {
 }
 
 export { DB_PATH };
+
+// ---- Monitoring (nur Zahlen, keine Inhalte) ----
+// sinceSql: UTC-Text im SQLite-Format 'YYYY-MM-DD HH:MM:SS'.
+const monitoringStmts = {
+  sessions: db.prepare("SELECT COUNT(*) AS t, COALESCE(SUM(created_at >= ?), 0) AS n FROM sessions"),
+  rounds: db.prepare("SELECT COUNT(*) AS t, COALESCE(SUM(created_at >= ?), 0) AS n FROM rounds"),
+  rounds_solved: db.prepare(
+    "SELECT COALESCE(SUM(success = 1), 0) AS t, COALESCE(SUM(success = 1 AND created_at >= ?), 0) AS n FROM rounds"
+  ),
+  wins: db.prepare("SELECT COUNT(*) AS t, COALESCE(SUM(created_at >= ?), 0) AS n FROM wins"),
+  api_calls: db.prepare("SELECT COUNT(*) AS t, COALESCE(SUM(created_at >= ?), 0) AS n FROM api_calls"),
+  api_cost_usd: db.prepare(
+    "SELECT COALESCE(SUM(cost_usd), 0) AS t, COALESCE(SUM(CASE WHEN created_at >= ? THEN cost_usd ELSE 0 END), 0) AS n FROM api_calls"
+  ),
+};
+
+export function monitoringSummary(sinceSqlText) {
+  const counters = {};
+  for (const [name, stmt] of Object.entries(monitoringStmts)) {
+    const r = stmt.get(sinceSqlText);
+    counters[name] = { total: Number(r.t), new: Number(r.n) };
+  }
+  counters.month_cost_eur = { total: Number(monthCostEur()) };
+  return counters;
+}
