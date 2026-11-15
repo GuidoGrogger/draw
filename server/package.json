@@ -6,7 +6,8 @@
   "description": "Backend für Draw & Guess: Claude-Agent-SDK-Guess-API + WebSocket-Duell-Relay",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.0",
