@@ -21,7 +21,10 @@ WORKDIR /app/server
 # Erst die Modul-Dateien: so bleibt der Dependency-Layer (inkl. des nativen
 # better-sqlite3-Builds) über Code-Änderungen hinweg im Cache.
 COPY server/package.json server/package-lock.json ./
-RUN npm ci --omit=dev --no-audit --no-fund
+# --ignore-scripts: better-sqlite3 ab v12 bringt die nativen Binaries fertig
+# in prebuilds/ mit; ohne den Schalter ruft npm trotzdem node-gyp auf, und das
+# Slim-Image hat kein Python. Ob das Binary lädt, prüft das Test-Gate unten.
+RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
 
 COPY server/src ./src
 COPY web /app/web
@@ -29,7 +32,8 @@ COPY web /app/web
 # Test-Gate am Artefakt (es gibt keine Testsuite): kein Image mit
 # Syntaxfehlern. Scheitert der Check, scheitert der Build — und der laufende
 # Container bleibt unangetastet.
-RUN for f in src/*.js; do node --check "$f"; done
+RUN for f in src/*.js; do node --check "$f"; done \
+ && node -e "new (require('better-sqlite3'))(':memory:').prepare('select 1').get()"
 
 USER draw:draw
 
